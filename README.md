@@ -27,4 +27,7 @@ Ideas for the masters project:
     * Maybe as a use case, we could perform some artificial calculation task, which algorithm would have to optimize in terms of power consumption, with minimal impact on performance
     * Maybe it would be more suitable to some IoT remote devices running Linux like baseboard with [jetson computing module](https://antmicro.com/platforms/open-source-jetson-baseboard/), [BeagleBone](https://beagleboard.org/bone) or even [RPI](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
     * In Linux there is [quite a few ways](https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-power) of devices control.
-6. Any other intresting topic, I am intrested in bunch of things and open minded :)
+6. Battery life and condition estimation with NN
+    * [Previous work](http://li.mit.edu/A/Papers/22/Hsu22XiongAE.pdf)
+    * Data set could be created by discharging battery, or some [example](https://kilthub.cmu.edu/articles/dataset/eVTOL_Battery_Dataset/14226830) data set can be used
+7. Any other intresting topic, I am intrested in bunch of things and open minded :)
