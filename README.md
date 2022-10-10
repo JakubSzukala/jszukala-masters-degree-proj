@@ -30,4 +30,5 @@ Ideas for the masters project:
 6. Battery life and condition estimation with NN
     * [Previous work](http://li.mit.edu/A/Papers/22/Hsu22XiongAE.pdf)
     * Data set could be created by discharging battery, or some [example](https://kilthub.cmu.edu/articles/dataset/eVTOL_Battery_Dataset/14226830) data set can be used
-7. Any other intresting topic, I am intrested in bunch of things and open minded :)
+7. Visual inspection of plants' health
+8. Any other intresting topic, I am intrested in bunch of things and open minded :)
