@@ -1,9 +1,13 @@
 import json
 from typing import BinaryIO
 from hashlib import md5
+from pathlib import Path
 
-def check_integrity(ground_truth_file, checked_file):
-    pass
+def check_integrity(ground_truth: dict, filepath: Path) -> bool:
+    checked_md5 = ''
+    with open(filepath, 'rb') as file:
+        checked_md5 = calculate_md5(file)
+    return ground_truth[filepath] == checked_md5
 
 
 def calculate_md5(filehandle: BinaryIO) -> str:
