@@ -3,21 +3,18 @@ from typing import BinaryIO
 from hashlib import md5
 from pathlib import Path
 
-def check_integrity(ground_truth: dict, filepath: Path) -> bool:
+def check_integrity(reference_md5: str, filepath: Path) -> bool:
     checked_md5 = ''
     try:
         with open(filepath, 'rb') as file:
-            checked_md5 = calculate_md5(file)
-        return ground_truth[filepath] == checked_md5
+            checked_md5 = file_calculate_md5(file)
+        return reference_md5 == checked_md5
     except FileNotFoundError as fnfe:
         print("FileNotFoundError: ", fnfe)
         return False
-    except KeyError as ke:
-        print("KeyError: ", ke)
-        return False
 
 
-def calculate_md5(filehandle: BinaryIO) -> str:
+def file_calculate_md5(filehandle: BinaryIO) -> str:
     return md5(filehandle.read()).hexdigest()
 
 
