@@ -34,12 +34,12 @@ def binary_to_dict(binary: bytes) -> dict:
 def generate_md5_reference(data_root: Path) -> dict:
     """Keys in returned dictionary will be relative to data root, as data
     may be located in various directories."""
-    ground_truth = {}
+    md5_ref = {}
     for root, _, files in os.walk(data_root):
         for name in files:
             filepath = os.path.join(root, name)
             filepath = os.path.join(*filepath.split('/')[2:])
             with open(os.path.join(data_root, filepath), 'rb') as file:
                 checksum = file_calculate_md5(file)
-            ground_truth[filepath] = checksum
-    return ground_truth
+            md5_ref[filepath] = checksum
+    return md5_ref
