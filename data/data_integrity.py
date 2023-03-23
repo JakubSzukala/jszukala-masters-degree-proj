@@ -2,6 +2,7 @@ import json
 from typing import BinaryIO
 from hashlib import md5
 from pathlib import Path
+import os
 
 def check_integrity(reference_md5: str, filepath: Path) -> bool:
     checked_md5 = ''
@@ -28,3 +29,17 @@ def binary_to_dict(binary: bytes) -> dict:
     json_string = ''.join(chr(int(x, 2)) for x in binary.split())
     d = json.loads(json_string)
     return d
+
+
+def generate_md5_reference(data_root: Path) -> dict:
+    """Keys in returned dictionary will be relative to data root, as data
+    may be located in various directories."""
+    ground_truth = {}
+    for root, _, files in os.walk(data_root):
+        for name in files:
+            filepath = os.path.join(root, name)
+            filepath = os.path.join(*filepath.split('/')[2:])
+            with open(os.path.join(data_root, filepath), 'rb') as file:
+                checksum = file_calculate_md5(file)
+            ground_truth[filepath] = checksum
+    return ground_truth
