@@ -3,33 +3,52 @@ import pytorch_lightning as pl
 
 import os
 from pathlib import Path
+from typing import Optional, Callable
 
-from data.data_integrity import check_integrity, binary_to_dict
+from data.data_integrity import calculate_md5_recursive
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
-    """Entire Wheat Heads Dataset. Provide path to the entire set, train, validation and test.
-    Depending on train argument different parts of the set will be returned. integrity_ref argument
-    is a binary file with stored checksum for the entire dataset."""
-    def __init__(self, data_root: Path, train: bool, integrity_ref: Path, download: bool = True) -> None:
-        super().__init__()
+    dataset_file_list = [
+        #             MD5 hash           File / directory name
+        ('359c66afd88f0983726003ffec4ab466', 'gwhd_2021')
+        ]
+    def __init__(
+            self,
+            data_root: Path,
+            train: bool,
+            transforms: Optional[Callable] = None,
+            target_transforms: Optional[Callable] = None,
+            download: bool = True
+            ) -> None:
+        super().__init__() # Unnecessary?
         self.data_root = data_root
         self.train = train
+        self.transforms = transforms
+        self.target_transforms = target_transforms
+        self.download = download
 
-        # Read the reference file with checksums for files in dataset
-        with open(integrity_ref, 'rb') as file:
-            checksum_references = binary_to_dict(file)
+        # Perform check for data existence/validity
+        data_exists = self._check_exists(self.data_root)
 
-        data_exists = self._check_exists(checksum_references, self.data_root)
-        if not data_exists and not download:
+        # Take actions on the result
+        if not data_exists and not self.download:
             raise RuntimeError("Dataset not found or corrupted. Use download=True to download it")
-        elif not data_exists and download:
+        elif not data_exists and self.download:
             # TODO: Implement download procedure
             raise NotImplementedError
 
+        #self.imgs = 
 
-    def _check_exists(self, checksum_references: dict, data_root) -> bool:
-        return all(check_integrity(
-            checksum_references[file], os.path.join(data_root, file)) for file in checksum_references.keys())
+
+    def _check_exists(self, data_root) -> bool:
+        return calculate_md5_recursive(data_root) == self.dataset_md5
+
+    def _load_image(self):
+        raise NotImplementedError
+
+
+    def _load_target(self):
+        raise NotImplementedError
 
 
 
