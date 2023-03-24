@@ -8,10 +8,7 @@ from typing import Optional, Callable
 from data.data_integrity import calculate_md5_recursive
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
-    dataset_file_list = [
-        #             MD5 hash           File / directory name
-        ('359c66afd88f0983726003ffec4ab466', 'gwhd_2021')
-        ]
+    dataset_md5 = '359c66afd88f0983726003ffec4ab466'
     def __init__(
             self,
             data_root: Path,
