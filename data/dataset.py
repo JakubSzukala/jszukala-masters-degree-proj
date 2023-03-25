@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import os
 import csv
 from pathlib import Path
-from typing import Optional, Callable, Tuple, Any
+from typing import Optional, Callable, Tuple, List, Any
 from PIL import Image
 
 from data.data_integrity import calculate_md5_recursive
@@ -63,7 +63,7 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         return calculate_md5_recursive(data_root) == self.DATASET_MD5
 
 
-    def _parse_csv(self, csv_path: Path):
+    def _parse_csv(self, csv_path: Path) -> dict:
         data = {}
         with open(csv_path) as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
@@ -87,8 +87,9 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         return Image.open(os.path.join(self.data_root, 'images', img_name)).convert("RGB")
 
 
-    def _load_target():
-        pass
+    def _load_target(self, index: int, target: str) -> List[int]:
+        img_name = self.img_ids[index]
+        return self.data[img_name]['targets'][target]
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         pass
