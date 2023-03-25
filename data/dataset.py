@@ -91,8 +91,17 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         img_name = self.img_ids[index]
         return self.data[img_name]['targets'][target]
 
+
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        pass
+        img = self._load_image(index)
+        target = self._load_target(index, 'bboxes')
+
+        if self.transforms is not None:
+            img = self.transforms(img)
+        if self.target_transforms is not None:
+            target = self.target_transforms(target)
+
+        return img, target
 
 
     def __len__(self) -> int:
