@@ -5,11 +5,12 @@ import os
 import csv
 from pathlib import Path
 from typing import Optional, Callable, Tuple, Any
+from PIL import Image
 
 from data.data_integrity import calculate_md5_recursive
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
-    dataset_md5 = '359c66afd88f0983726003ffec4ab466'
+    DATASET_MD5 = '359c66afd88f0983726003ffec4ab466'
 
     def __init__(
             self,
@@ -25,8 +26,8 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         self.transforms = transforms
         self.target_transforms = target_transforms
         self.download = download
-        self.imgs = []
-        self.targets = []
+        self.data = {}
+        self.img_ids = []
 
         # Perform check for data existence/validity
         data_exists = self._check_exists(self.data_root)
@@ -47,45 +48,49 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
             'val' : 'competition_val.csv'
         }
         if self.subset != 'all':
-            self.imgs, self.targets = self._parse_csv(
+            self.data = self._parse_csv(
                 os.path.join(self.data_root, subset_map[self.subset]))
         else:
-            temp_imgs = []
-            temp_targets = []
             for csv_filename in subset_map.values():
-                temp_imgs, temp_targets = self._parse_csv(
+                # Merging operator of 2 dictionaries (Python 3.9.0+)
+                self.data |= self._parse_csv(
                     os.path.join(self.data_root, csv_filename)
                 )
-                self.imgs.append(temp_imgs)
-                self.targets.append(temp_targets)
+        self.img_ids = list(self.data.keys())
 
 
     def _check_exists(self, data_root) -> bool:
-        return calculate_md5_recursive(data_root) == self.dataset_md5
+        return calculate_md5_recursive(data_root) == self.DATASET_MD5
 
 
     def _parse_csv(self, csv_path: Path):
-        imgs = []
-        targets = []
+        data = {}
         with open(csv_path) as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             next(reader, None) # Skip header
             for line in reader:
                 img_name = line[0]
-                img_target = []
+                img_domain = line[-1]
+                img_bboxes = []
                 bboxes_as_str = line[1:-1][0].split(';')
                 for bbox_as_str in bboxes_as_str:
                     try:
-                        img_target.append([int(i) for i in bbox_as_str.split(' ')])
-                    except ValueError as e:
-                        pass
-                imgs.append(img_name)
-                targets.append(img_target)
-        return tuple(imgs), tuple(targets)
+                        img_bboxes.append([int(i) for i in bbox_as_str.split(' ')])
+                    except ValueError:
+                        img_bboxes.append([])
+                data[img_name] = {'targets' : { 'bboxes' : img_bboxes}, 'domain' : img_domain}
+        return data
 
 
-    def _load_image(self):
-        raise NotImplementedError
+    def _load_image(self, index: int) -> Image.Image:
+        pass
+
+
+    def _load_target():
+        pass
+
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        pass
 
 
     def __len__(self) -> int:
