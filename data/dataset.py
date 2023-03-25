@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
 import os
@@ -108,17 +109,55 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         return len(self.img_ids)
 
 
+class WheatHeadsDataModule(pl.LightningDataModule):
+    def __init__(
+            self,
+            data_root: str,
+            batch_size: int,
+            stage_to_transforms_map: Optional[dict[str, Callable]],
+            stage_to_target_transforms_map: Optional[dict[str, Callable]]
+            ) -> None:
+        super().__init__()
+        self.data_root = data_root
+        self.batch_size = batch_size
+        self.stage_to_transforms_map = stage_to_transforms_map
+        self.stage_to_target_transforms_map = stage_to_target_transforms_map
 
 
-#class WheatHeadsDataModule(pl.LightningDataModule):
-    #def __init__(self, data_dir:str="data", batch_size:int=8) -> None:
-        #super().__init__()
-        #self.data_dir = data_dir
-        #self.batch_size = batch_size
+    def prepare_data(self) -> None:
+        # Calling constructor will download the data and check its integrity
+        WheatHeadsDataset(self.data_root, 'all', download=True)
 
 
-    ## Return loaders which are classes providing iterators for Dataset class
-    ## Loader combines Dataset and Sampler
-    #def _download(self):
-        #pass
+    def setup(self, stage: str) -> None:
+        """User should prepare a dictionary that will map stage to transforms that should be performed."""
+        transforms = self.stage_to_transforms_map[stage]
+        target_transforms = self.stage_to_target_transforms_map[stage]
+        if stage == 'fit':
+            self.gwhd_train = WheatHeadsDataset(
+                self.data_root, 'train', transforms, target_transforms, download=False)
+            self.gwhd_val = WheatHeadsDataset(
+                self.data_root, 'val', transforms, target_transforms, download=False)
 
+        if stage == 'test':
+            self.gwhd_test = WheatHeadsDataset(
+                self.data_root, 'test', transforms, target_transforms, download=False)
+
+        if stage == 'predict':
+            raise NotImplementedError()
+
+
+    def train_dataloader(self) -> DataLoader:
+        return DataLoader(self.gwhd_train, batch_size=self.batch_size)
+
+
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(self.gwhd_train, batch_size=self.batch_size)
+
+
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(self.gwhd_test, batch_size=self.batch_size)
+
+
+    def predict_dataloader(self) -> DataLoader:
+        raise NotImplementedError()
