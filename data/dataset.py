@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import os
 import csv
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple, Any
 
 from data.data_integrity import calculate_md5_recursive
 
@@ -84,13 +84,13 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         return tuple(imgs), tuple(targets)
 
 
-
     def _load_image(self):
         raise NotImplementedError
 
 
-    def _load_target(self):
-        raise NotImplementedError
+    def __len__(self) -> int:
+        return len(self.imgs)
+
 
 
 
