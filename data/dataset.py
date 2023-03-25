@@ -83,7 +83,8 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
 
 
     def _load_image(self, index: int) -> Image.Image:
-        pass
+        img_name = self.img_ids[index]
+        return Image.open(os.path.join(self.data_root, 'images', img_name)).convert("RGB")
 
 
     def _load_target():
