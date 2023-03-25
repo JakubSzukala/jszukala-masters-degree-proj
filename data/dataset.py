@@ -105,7 +105,7 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
 
 
     def __len__(self) -> int:
-        return len(self.imgs)
+        return len(self.img_ids)
 
 
 
