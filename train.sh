@@ -6,10 +6,7 @@ if [ -d $DATASET_ROOT_DIR ]; then
 else
     echo "Fetching data from $DATA_BUCKET..."
     mkdir -p $DATASET_ROOT_DIR
-    gcloud storage cp gs://"$DATA_BUCKET/gwhd_2021.zip" "$DATASET_ROOT_DIR/gwhd_2021.zip"
-    unzip "$DATASET_ROOT_DIR/gwhd_2021.zip" -d "$DATASET_ROOT_DIR"
-    mv $DATASET_ROOT_DIR/gwhd_2021/* "$DATASET_ROOT_DIR"
-    rm "$DATASET_ROOT_DIR/gwhd_2021.zip" && rmdir "$DATASET_ROOT_DIR/gwhd_2021"
+    gcloud storage cp --recursive gs://"$DATA_BUCKET/gwhd_2021/*" "$DATASET_ROOT_DIR"
     echo "Data fetched"
 
     echo "Calculating checksum..."
