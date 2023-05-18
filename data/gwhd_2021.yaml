@@ -1,0 +1,9 @@
+train: /home/js/Projects/jszukala-masters-degree-proj/data/gwhd_2021/yolo-format-dataset/train.txt
+val: /home/js/Projects/jszukala-masters-degree-proj/data/gwhd_2021/yolo-format-dataset/val.txt
+test: /home/js/Projects/jszukala-masters-degree-proj/data/gwhd_2021/yolo-format-dataset/test.txt
+
+# number of classes
+nc: 1
+
+# class names
+names: [ 'wheat-head' ]
