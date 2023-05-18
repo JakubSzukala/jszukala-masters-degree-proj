@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Optional, Callable, Tuple, List, Any
 from PIL import Image
 
-from data.data_integrity import calculate_md5_recursive
+from data.scripts.data_integrity import calculate_md5_recursive
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
-    DATASET_MD5 = '359c66afd88f0983726003ffec4ab466'
+    DATASET_MD5 = 'eb17718290c63738bf79f3e120bfba96'
 
     def __init__(
             self,
