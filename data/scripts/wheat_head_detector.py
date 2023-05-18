@@ -6,10 +6,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import torchvision
+from torchvision.models.detection.rpn import AnchorGenerator
+from torchvision.models.detection import FasterRCNN
+from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 
 class WheatHeadDetector(pl.LightningModule):
     def __init__(self) -> None:
-        self.network = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights='DEFAULT')
+        self.features = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights='DEFAULT').features
         num_classes = 2
         # cls_score is a linear layer calculatin class scores (logits)
         # heads are the layers that are attached to the backbone
