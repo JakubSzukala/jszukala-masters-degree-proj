@@ -130,3 +130,14 @@ dmypy.json
 
 # Ignore data
 data/gwhd_2021/
+
+# Ignore trained weights and other training artifacts
+weights/
+runs/
+test/
+
+# Ignore auto generated config file
+data/auto_gwhd_2021.yaml
+
+# Ignore private exports file
+exports.sh
