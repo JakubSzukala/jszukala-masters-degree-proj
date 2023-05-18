@@ -26,6 +26,16 @@ else
     echo "Yolo format dataset done"
 fi
 
+# Fetch yolov7 weights
+if [ -f $YOLOV7_ROOT_DIR/weights/yolov7_training.pt ]; then
+    echo "Yolov7 weights: $YOLOV7_ROOT_DIR/weights/yolov7_training.pt"
+else
+    echo "Fetching yolov7 weights..."
+    mkdir -p $YOLOV7_ROOT_DIR/weights
+    gcloud storage cp gs://"$DATA_BUCKET/yolov7_training.pt" "$YOLOV7_ROOT_DIR/weights/yolov7_training.pt"
+    echo "Yolov7 weights fetched"
+fi
+
 cd $YOLOV7_ROOT_DIR
 
 # Generate yaml configuration file from env variables
@@ -46,6 +56,6 @@ python train.py \
     --data $PROJ_PATH/data/auto_gwhd_2021.yaml \
     --img 1024 1024 \
     --cfg cfg/training/yolov7.yaml \
-    --weights $PROJ_PATH/weights/yolov7_training.pt \
+    --weights $YOLOV7_ROOT_DIR/weights/yolov7_training.pt \
     --name yolov7-custom \
     --hyp data/hyp.scratch.custom.yaml
