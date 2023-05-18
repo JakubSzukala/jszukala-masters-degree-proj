@@ -12,12 +12,9 @@ def calculate_md5_recursive(path: Path) -> str:
             with open(filepath, 'rb') as filehandle:
                 buffer = filehandle.read()
                 h.update(buffer)
-                print(f"Hexdigest: {filepath} - {h.hexdigest()} ")
     return h.hexdigest()
 
 if __name__ == '__main__':
     data_root = sys.argv[1]
     DATASET_MD5 = sys.argv[2]
-    hexdigest = calculate_md5_recursive(data_root)
-    print("Hexdigest: ", hexdigest)
-    assert hexdigest == DATASET_MD5
+    assert calculate_md5_recursive(data_root)== DATASET_MD5
