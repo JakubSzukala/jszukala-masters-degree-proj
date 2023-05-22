@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import os
 
+from check_env import check_env
+
+check_env()
 DATASET_ROOT_DIR = os.environ['DATASET_ROOT_DIR']
 
 def create_yolo_dir_tree():
