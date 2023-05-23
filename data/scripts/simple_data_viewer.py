@@ -5,8 +5,6 @@ from PIL import Image, ImageDraw
 import base64
 
 DATASET_ROOT_DIR = os.environ['DATASET_ROOT_DIR']
-from easyimages.utils import get_execution_context
-print(get_execution_context())
 
 grid_template = """<div class="zoom"><img style='width: {size}px; height: {size}px; margin: 1px; float: left; border: 0px solid black;'title={label} src="data:image/png;base64, {url}"/><p>{caption}</p></div>"""
 
@@ -35,6 +33,5 @@ for row in reduced_val_df.iterrows():
     base64_img = base64.b64encode(buff.getvalue()).decode("utf-8")
     templates.append(grid_template.format(url=base64_img, label='wheat-head', size=1024, caption=row[1]['image_name']))
 html = ''.join(templates)
-print(len(templates))
 with open('test.html', 'w') as f:
     f.write(html)
