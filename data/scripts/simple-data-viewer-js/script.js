@@ -1,4 +1,4 @@
-const fileSelector = document.getElementById('file-selector');
+const fileSelector = document.getElementById('label-file-selector');
 const imageContainer = document.getElementById('image-container');
 const loadButton = document.getElementById('load-button');
 const filePathInput = document.getElementById('file-path-input');
@@ -47,18 +47,61 @@ async function parseBBoxCSV(fileUrl, hasHeader = true) {
 }
 
 
+function displayImage(image, bboxes, targetElement) {
+    loadImage(image, targetElement);
+    drawBBoxes(bboxes, targetElement);
+}
+
+
+function loadImage(image, targetElement) {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(image);
+    img.onload = () => {
+        URL.revokeObjectURL(this.src);
+    }
+    targetElement.appendChild(img);
+    const info = document.createElement("span");
+    info.innerHTML = image.name + ": " + image.size + " bytes";
+    targetElement.appendChild(info);
+}
+
+
+function drawBBoxes(bboxes, targetElement) {
+    const image = targetElement.getElementsByTagName("img");
+    if (image == null) {
+        throw new Error("No image found in target element");
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d");
+    ctx.beginPath();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'red';
+    for (let i = 0; i < bboxes.length; i++) {
+        [xmin, ymin, xmax, ymax] = bboxes[i];
+        console.log("all coordinates: ", xmin, ymin, xmax, ymax);
+        ctx.rect(xmin, ymin, xmax - xmin, ymax - ymin);
+    }
+    ctx.stroke();
+    targetElement.appendChild(canvas);
+}
+
 async function load() {
     // Parse CSV labels file
     csvUrl = URL.createObjectURL(fileSelector.files[0]);
     const imageToBBoxesMap = await parseBBoxCSV(csvUrl);
-    const imagesPath = filePathInput.value;
 
-    // Create container for images to display
-    const imageList = document.createElement("ul");
-    imageContainer.appendChild(imageList);
-    const testFileName = 'e6b6a900e5c54cd5d8b0649768c361512cff1813409319eba26da5c7f47bb2e6.png'
-    const testFile = new File([imagesPath], testFileName);
-    // 
+    // for a file.name in imageselector files display image
+    const testFile = document.getElementById('image-file-selector').files[0];
+    const imageList = document.getElementById('image-list');
+    const listItemReference = document.createElement("li");
+    const bboxes = imageToBBoxesMap.get(testFile.name);
+    console.log("bboxes: ", bboxes);
+    imageList.appendChild(listItemReference);
+    displayImage(testFile, bboxes, listItemReference);
+
+    //
     //for (const [key, value] of imageToBBoxesMap) {
         //const filePath = concatPathWithFilename(imagesPath, key);
         //const file = new File([filePath], key);
@@ -68,7 +111,8 @@ async function load() {
 }
 
 
-//fileSelector.addEventListener("change", displayImages, false);
+
+fileSelector.addEventListener("change", displayImages, false);
 loadButton.addEventListener("click", load, false);
 
 function concatPathWithFilename(path, filename) {
@@ -80,10 +124,6 @@ function concatPathWithFilename(path, filename) {
   }
 
 //function drawRectangleOnImage()
-
-function displayImage(image) {
-
-}
 
 function displayImages() {
     if (!this.files.length) {
@@ -99,6 +139,7 @@ function displayImages() {
 
             const img = document.createElement("img");
             img.src = URL.createObjectURL(this.files[i]);
+            console.log("path: ", this.files[i].path);
             img.onload = () => {
                 URL.revokeObjectURL(this.src);
             }

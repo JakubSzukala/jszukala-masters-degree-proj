@@ -9,12 +9,13 @@
 <body>
 <!-- partial:index.partial.html -->
 <div>
-  <input type="text" id="file-path-input"><br>
-  <input type="file" id="file-selector" multiple><br>
+  <input type="file" id="image-file-selector"><br>
+  <input type="file" id="label-file-selector" multiple><br>
   <button id="load-button">Load images</button><br>
   <pre id="output"></pre>
 </div>
 <div id="image-container">
+  <ul id="image-list"></ul>
 </div>
 <div id="loader">
   <!--
