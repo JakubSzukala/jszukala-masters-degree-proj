@@ -34,6 +34,7 @@ async function parseBBoxCSV(fileUrl, hasHeader = true) {
             }
 
             bboxesList = bboxesString.split(';');
+
             for (let j = 0; j < bboxesList.length; j++) {
                 bboxesList[j] = bboxesList[j].split(' ').map(str => parseInt(str));
             }
@@ -47,44 +48,49 @@ async function parseBBoxCSV(fileUrl, hasHeader = true) {
 }
 
 
-function displayImage(image, bboxes, targetElement) {
-    loadImage(image, targetElement);
-    drawBBoxes(bboxes, targetElement);
-}
-
-
-function loadImage(image, targetElement) {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(image);
-    img.onload = () => {
-        URL.revokeObjectURL(this.src);
-    }
-    targetElement.appendChild(img);
-    const info = document.createElement("span");
-    info.innerHTML = image.name + ": " + image.size + " bytes";
-    targetElement.appendChild(info);
-}
-
-
-function drawBBoxes(bboxes, targetElement) {
-    const image = targetElement.getElementsByTagName("img");
-    if (image == null) {
-        throw new Error("No image found in target element");
-    }
+async function displayImage(imageRef, bboxes, targetElement) {
+    // Create canvas to draw on image and then bboxes
     const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
+    targetElement.appendChild(canvas);
+
+    // Load the image
+    const image = await loadImage(imageRef);
+
+    // Adjust the canvas size to the image size
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+
+    // Draw boxes
     const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0);
+    drawBBoxes(bboxes, ctx);
+}
+
+
+function loadImage(imageFile) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(this.src);
+            resolve(img);
+        }
+        img.onerror = () => {
+            reject(new Error("Failed to load image"));
+        };
+        img.src = URL.createObjectURL(imageFile);
+    });
+}
+
+
+function drawBBoxes(bboxes, ctx) {
     ctx.beginPath();
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 2;
     ctx.strokeStyle = 'red';
     for (let i = 0; i < bboxes.length; i++) {
-        [xmin, ymin, xmax, ymax] = bboxes[i];
-        console.log("all coordinates: ", xmin, ymin, xmax, ymax);
+        const [xmin, ymin, xmax, ymax] = bboxes[i];
         ctx.rect(xmin, ymin, xmax - xmin, ymax - ymin);
     }
     ctx.stroke();
-    targetElement.appendChild(canvas);
 }
 
 async function load() {
@@ -95,19 +101,17 @@ async function load() {
     // for a file.name in imageselector files display image
     const testFile = document.getElementById('image-file-selector').files[0];
     const imageList = document.getElementById('image-list');
-    const listItemReference = document.createElement("li");
-    const bboxes = imageToBBoxesMap.get(testFile.name);
-    console.log("bboxes: ", bboxes);
-    imageList.appendChild(listItemReference);
-    displayImage(testFile, bboxes, listItemReference);
 
-    //
-    //for (const [key, value] of imageToBBoxesMap) {
-        //const filePath = concatPathWithFilename(imagesPath, key);
-        //const file = new File([filePath], key);
-    //}
-
-
+    const imageFileSelector = document.getElementById('image-file-selector');
+    for (let i = 0; i < imageFileSelector.files.length; i++) {
+        const bboxes = imageToBBoxesMap.get(imageFileSelector.files[i].name);
+        if (bboxes != undefined) {
+            const listItemReference = document.createElement("li");
+            imageList.appendChild(listItemReference);
+            listItemReference.innerHTML = imageFileSelector.files[i].name;
+            await displayImage(imageFileSelector.files[i], bboxes, listItemReference);
+        }
+    }
 }
 
 
