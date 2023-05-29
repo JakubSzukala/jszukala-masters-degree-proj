@@ -1,15 +1,10 @@
-const fileSelector = document.getElementById('label-file-selector');
-const imageContainer = document.getElementById('image-container');
-const loadButton = document.getElementById('load-button');
-const filePathInput = document.getElementById('file-path-input');
+// Constants
+const IMG_PER_PAGE = 20;
 
-fileSelector.addEventListener("change", (event) => {
-    const fileList = event.target.files;
-    for (let i = 0; i < fileList.length; i++) {
-        const file = fileList[i];
-        console.log(file.name);
-    }
-});
+let imageToBBoxesMap;
+let filteredImages = [];
+let currentLowerIndex = 0;
+let currentUpperIndex = IMG_PER_PAGE;
 
 
 async function parseBBoxCSV(fileUrl, hasHeader = true) {
@@ -32,7 +27,7 @@ async function parseBBoxCSV(fileUrl, hasHeader = true) {
             if (bboxesString == 'no_box') {
                 continue;
             }
-
+            filteredImages.length
             bboxesList = bboxesString.split(';');
 
             for (let j = 0; j < bboxesList.length; j++) {
@@ -77,7 +72,7 @@ function loadImage(imageFile) {
         img.onerror = () => {
             reject(new Error("Failed to load image"));
         };
-        img.src = URL.createObjectURL(imageFile);
+        img.src = URL.createObjectURL(imageFile);filteredImages.length
     });
 }
 
@@ -93,31 +88,64 @@ function drawBBoxes(bboxes, ctx) {
     ctx.stroke();
 }
 
-async function load() {
-    // Parse CSV labels file
-    csvUrl = URL.createObjectURL(fileSelector.files[0]);
-    const imageToBBoxesMap = await parseBBoxCSV(csvUrl);
 
-    // for a file.name in imageselector files display image
-    const testFile = document.getElementById('image-file-selector').files[0];
-    const imageList = document.getElementById('image-list');
-
-    const imageFileSelector = document.getElementById('image-file-selector');
-    for (let i = 0; i < imageFileSelector.files.length; i++) {
-        const bboxes = imageToBBoxesMap.get(imageFileSelector.files[i].name);
-        if (bboxes != undefined) {
-            const listItemReference = document.createElement("li");
-            imageList.appendChild(listItemReference);
-            listItemReference.innerHTML = imageFileSelector.files[i].name;
-            await displayImage(imageFileSelector.files[i], bboxes, listItemReference);
-        }
+async function displayImagesPage(lowerIndex, upperIndex, listElement) {
+    for (let i = lowerIndex; i < upperIndex; i++) {
+        const bboxes = imageToBBoxesMap.get(filteredImages[i].name);
+        const listItemReference = document.createElement("li");
+        listElement.appendChild(listItemReference);
+        listItemReference.innerHTML = filteredImages[i].name;
+        await displayImage(filteredImages[i], bboxes, listItemReference);
     }
 }
 
 
+async function load() {
+    // Parse CSV labels file
+    const fileSelector = document.getElementById('label-file-selector');
+    csvUrl = URL.createObjectURL(fileSelector.files[0]);
+    imageToBBoxesMap = await parseBBoxCSV(csvUrl);
 
-fileSelector.addEventListener("change", displayImages, false);
+    // for a file.name in imageselector files display image
+    const imageList = document.getElementById('image-list');
+    const imageFileSelector = document.getElementById('image-file-selector');
+
+    // Filter images that are not in the labels file
+    for (let i = 0; i < imageFileSelector.files.length; i++) {
+        if (imageToBBoxesMap.has(imageFileSelector.files[i].name)) {
+            filteredImages.push(imageFileSelector.files[i]);
+        }
+    }
+
+    // Display images
+    displayImagesPage(0, IMG_PER_PAGE, imageList);
+}
+
+function nextPage() {
+    const imageList = document.getElementById('image-list');
+    imageList.innerHTML = "";
+    currentLowerIndex = (currentLowerIndex + IMG_PER_PAGE) % filteredImages.length;
+    currentUpperIndex = (currentUpperIndex + IMG_PER_PAGE) % filteredImages.length;
+    displayImagesPage(currentLowerIndex, currentUpperIndex, imageList);
+}
+
+function previousPage() {
+    const imageList = document.getElementById('image-list');
+    imageList.innerHTML = "";
+    currentLowerIndex = (currentLowerIndex - IMG_PER_PAGE + filteredImages.length) % filteredImages.length;
+    currentUpperIndex = (currentUpperIndex - IMG_PER_PAGE + filteredImages.length) % filteredImages.length;
+    displayImagesPage(currentLowerIndex, currentUpperIndex, imageList);
+}
+
+// Register event listeners
+const loadButton = document.getElementById('load-button');
+const nextPageButton = document.getElementById('next-page-button');
+const previousPageButton = document.getElementById('previous-page-button');
 loadButton.addEventListener("click", load, false);
+nextPageButton.addEventListener("click", nextPage, false);
+previousPageButton.addEventListener("click", previousPage, false);
+document.getElementById('next-page-button-bot').addEventListener("click", nextPage, false);
+document.getElementById('previous-page-button-bot').addEventListener("click", previousPage, false);
 
 function concatPathWithFilename(path, filename) {
     if (path.endsWith('/')) {
@@ -126,32 +154,3 @@ function concatPathWithFilename(path, filename) {
       return path + '/' + filename;
     }
   }
-
-//function drawRectangleOnImage()
-
-function displayImages() {
-    if (!this.files.length) {
-        imageContainer.innerHTML = "<p>No files selected!</p>";
-    } else {
-        imageContainer.innerHTML = "";
-        const imageList = document.createElement("ul");
-        imageContainer.appendChild(imageList);
-
-        for (let i = 0; i < this.files.length; i++) {
-            const li = document.createElement("li");
-            imageList.appendChild(li);
-
-            const img = document.createElement("img");
-            img.src = URL.createObjectURL(this.files[i]);
-            console.log("path: ", this.files[i].path);
-            img.onload = () => {
-                URL.revokeObjectURL(this.src);
-            }
-            li.appendChild(img);
-            const info = document.createElement("span");
-            info.innerHTML = this.files[i].name + ": " + this.files[i].size + " bytes";
-            li.appendChild(info);
-        }
-    }
-}
-// https://developer.mozilla.org/en-US/docs/Web/API/File_API/Using_files_from_web_applications#example_using_object_urls_to_display_images
