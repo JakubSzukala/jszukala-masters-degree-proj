@@ -79,7 +79,7 @@ function loadImage(imageFile) {
 
 function drawBBoxes(bboxes, ctx) {
     ctx.beginPath();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.strokeStyle = 'red';
     for (let i = 0; i < bboxes.length; i++) {
         const [xmin, ymin, xmax, ymax] = bboxes[i];
@@ -94,7 +94,7 @@ async function displayImagesPage(lowerIndex, upperIndex, listElement) {
         const bboxes = imageToBBoxesMap.get(filteredImages[i].name);
         const listItemReference = document.createElement("li");
         listElement.appendChild(listItemReference);
-        listItemReference.innerHTML = filteredImages[i].name;
+        listItemReference.innerHTML = filteredImages[i].name + " (bbboxes_n: " + bboxes.length + ") " + i + "/" + filteredImages.length;
         await displayImage(filteredImages[i], bboxes, listItemReference);
     }
 }
@@ -116,6 +116,7 @@ async function load() {
             filteredImages.push(imageFileSelector.files[i]);
         }
     }
+    filteredImages.sort((a, b) => a.name.localeCompare(b.name));
 
     // Display images
     displayImagesPage(0, IMG_PER_PAGE, imageList);
