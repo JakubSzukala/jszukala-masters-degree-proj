@@ -33,7 +33,16 @@ async function parseBBoxCSV(fileUrl, hasHeader = true) {
             for (let j = 0; j < bboxesList.length; j++) {
                 bboxesList[j] = bboxesList[j].split(' ').map(str => parseInt(str));
             }
-            dictionary.set(image_name, bboxesList);
+            if (dictionary.has(image_name)) {
+                const existingBboxesList = dictionary.get(image_name);
+                for (let i = 0; i < bboxesList.length; i++) {
+                    existingBboxesList.push(bboxesList[i]);
+                }
+                dictionary.set(image_name, existingBboxesList);
+            }
+            else {
+                dictionary.set(image_name, bboxesList);
+            }
         }
         return dictionary;
 
