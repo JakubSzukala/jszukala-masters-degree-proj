@@ -79,7 +79,7 @@ function loadImage(imageFile) {
 
 function drawBBoxes(bboxes, ctx) {
     ctx.beginPath();
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 5;
     ctx.strokeStyle = 'red';
     for (let i = 0; i < bboxes.length; i++) {
         const [xmin, ymin, xmax, ymax] = bboxes[i];
@@ -122,20 +122,22 @@ async function load() {
     displayImagesPage(0, IMG_PER_PAGE, imageList);
 }
 
-function nextPage() {
+async function nextPage() {
     const imageList = document.getElementById('image-list');
     imageList.innerHTML = "";
     currentLowerIndex = (currentLowerIndex + IMG_PER_PAGE) % filteredImages.length;
     currentUpperIndex = (currentUpperIndex + IMG_PER_PAGE) % filteredImages.length;
-    displayImagesPage(currentLowerIndex, currentUpperIndex, imageList);
+    await displayImagesPage(currentLowerIndex, currentUpperIndex, imageList);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function previousPage() {
+async function previousPage() {
     const imageList = document.getElementById('image-list');
     imageList.innerHTML = "";
     currentLowerIndex = (currentLowerIndex - IMG_PER_PAGE + filteredImages.length) % filteredImages.length;
     currentUpperIndex = (currentUpperIndex - IMG_PER_PAGE + filteredImages.length) % filteredImages.length;
-    displayImagesPage(currentLowerIndex, currentUpperIndex, imageList);
+    await displayImagesPage(currentLowerIndex, currentUpperIndex, imageList);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Register event listeners
