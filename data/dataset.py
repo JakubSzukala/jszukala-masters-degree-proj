@@ -12,6 +12,7 @@ from data.scripts.data_integrity import calculate_md5_recursive
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
     DATASET_MD5 = 'b520e4ce21aee589f8c11602aaf5352c'
+    IGNORED = 'yolo-format-dataset'
 
     def __init__(
             self,
@@ -63,7 +64,7 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
     def _check_exists(self, data_root) -> bool:
         if not os.path.exists(data_root):
             return False
-        return calculate_md5_recursive(data_root) == self.DATASET_MD5
+        return calculate_md5_recursive(data_root, ignored=Path(data_root, self.IGNORED)) == self.DATASET_MD5
 
 
     def _parse_csv(self, csv_path: Path) -> dict:
