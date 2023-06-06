@@ -61,6 +61,8 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
 
 
     def _check_exists(self, data_root) -> bool:
+        if not os.path.exists(data_root):
+            return False
         return calculate_md5_recursive(data_root) == self.DATASET_MD5
 
 
