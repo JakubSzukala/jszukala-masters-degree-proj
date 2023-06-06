@@ -9,6 +9,7 @@ from typing import Optional, Callable, Tuple, List, Any
 from PIL import Image
 
 from data.scripts.data_integrity import calculate_md5_recursive
+import numpy as np
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
     DATASET_MD5 = 'b520e4ce21aee589f8c11602aaf5352c'
@@ -19,14 +20,12 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
             data_root: Path,
             subset: str,
             transforms: Optional[Callable] = None,
-            target_transforms: Optional[Callable] = None,
             download: bool = True
             ) -> None:
         super().__init__() # Unnecessary?
         self.data_root = data_root
         self.subset = subset
         self.transforms = transforms
-        self.target_transforms = target_transforms
         self.download = download
         self.data = {}
         self.img_ids = []
@@ -82,13 +81,20 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
                         img_bboxes.append([int(i) for i in bbox_as_str.split(' ')])
                     except ValueError:
                         img_bboxes.append([])
-                data[img_name] = {'targets' : { 'bboxes' : img_bboxes}, 'domain' : img_domain}
+                data[img_name] = {
+                    'targets' : {
+                        'bboxes' : img_bboxes,
+                        'classes' : ['wheat-head'] * len(img_bboxes)
+                    },
+                    'domain' : img_domain
+                }
         return data
 
 
     def _load_image(self, index: int) -> Image.Image:
         img_name = self.img_ids[index]
-        return Image.open(os.path.join(self.data_root, 'images', img_name)).convert("RGB")
+        img = Image.open(os.path.join(self.data_root, 'images', img_name)).convert("RGB")
+        return np.array(img)
 
 
     def _load_target(self, index: int, target: str) -> List[int]:
@@ -99,13 +105,19 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         img = self._load_image(index)
         target = self._load_target(index, 'bboxes')
+        labels = self._load_target(index, 'classes')
 
+        # TODO: make a sanity check!!!
         if self.transforms is not None:
-            img = self.transforms(img)
-        if self.target_transforms is not None:
-            target = self.target_transforms(target)
+            transformed = self.transforms(image=img, bboxes=target, labels=labels)
+            img = transformed['image']
+            target = transformed['bboxes']
+            labels = transformed['labels']
 
-        return img, target
+        img = img / 255.0
+
+
+        return img, target, labels
 
 
     def __len__(self) -> int:
