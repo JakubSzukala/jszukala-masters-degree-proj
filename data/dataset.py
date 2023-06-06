@@ -11,7 +11,7 @@ from PIL import Image
 from data.scripts.data_integrity import calculate_md5_recursive
 
 class WheatHeadsDataset(torch.utils.data.Dataset):
-    DATASET_MD5 = 'eb17718290c63738bf79f3e120bfba96'
+    DATASET_MD5 = 'b520e4ce21aee589f8c11602aaf5352c'
 
     def __init__(
             self,
