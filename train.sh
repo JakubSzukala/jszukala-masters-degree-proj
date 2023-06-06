@@ -23,7 +23,7 @@ else
     echo "Yolo format dataset done"
 fi
 
-# Fetch yolov7 weights
+# Fetch yolov7 weights for transfer learning
 if [ -f $YOLOV7_ROOT_DIR/weights/yolov7_training.pt ]; then
     echo "Yolov7 weights: $YOLOV7_ROOT_DIR/weights/yolov7_training.pt"
 else
@@ -32,8 +32,6 @@ else
     gcloud storage cp gs://"$DATA_BUCKET/yolov7_training.pt" "$YOLOV7_ROOT_DIR/weights/yolov7_training.pt"
     echo "Yolov7 weights fetched"
 fi
-
-cd $YOLOV7_ROOT_DIR
 
 # Generate yaml configuration file from env variables
 echo "train: $DATASET_ROOT_DIR/yolo-format-dataset/train.txt
@@ -46,13 +44,16 @@ nc: 1
 # class names
 names: [ 'wheat-head' ]" > $PROJ_PATH/data/auto_gwhd_2021.yaml
 
+cd $YOLOV7_ROOT_DIR
+
+# TODO: Change weights and hyp to arg instead of hard coding and batch size to env variable
 python train.py \
     --workers 8 \
     --device 0 \
     --batch-size 1 \
     --data $PROJ_PATH/data/auto_gwhd_2021.yaml \
     --img 1024 1024 \
-    --cfg cfg/training/yolov7.yaml \
+    --cfg $PROJ_PATH/config/yolov7.yaml \
     --weights $YOLOV7_ROOT_DIR/weights/yolov7_training.pt \
     --name yolov7-custom \
     --hyp data/hyp.scratch.custom.yaml
