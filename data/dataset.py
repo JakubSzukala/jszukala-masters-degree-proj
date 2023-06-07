@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
+import torchvision
 import pytorch_lightning as pl
 
 import os
@@ -20,7 +21,8 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
             data_root: Path,
             subset: str,
             transforms: Optional[Callable] = None,
-            download: bool = True
+            download: bool = True,
+            check_integrity: bool = False
             ) -> None:
         super().__init__() # Unnecessary?
         self.data_root = data_root
@@ -31,7 +33,10 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         self.img_ids = []
 
         # Perform check for data existence/validity
-        data_exists = self._check_exists(self.data_root)
+        if check_integrity:
+            data_exists = self._check_integrity(self.data_root)
+        else:
+            data_exists = os.path.exists(self.data_root)
 
         # Take actions on the result
         if not data_exists and not self.download:
@@ -60,7 +65,7 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
         self.img_ids = list(self.data.keys())
 
 
-    def _check_exists(self, data_root) -> bool:
+    def _check_integrity(self, data_root) -> bool:
         if not os.path.exists(data_root):
             return False
         return calculate_md5_recursive(data_root, ignored=Path(data_root, self.IGNORED)) == self.DATASET_MD5
@@ -84,7 +89,7 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
                 data[img_name] = {
                     'targets' : {
                         'bboxes' : img_bboxes,
-                        'classes' : ['wheat-head'] * len(img_bboxes)
+                        'classes' : [ 0 ] * len(img_bboxes) # 0 for wheat head
                     },
                     'domain' : img_domain
                 }
@@ -99,25 +104,64 @@ class WheatHeadsDataset(torch.utils.data.Dataset):
 
     def _load_target(self, index: int, target: str) -> List[int]:
         img_name = self.img_ids[index]
-        return self.data[img_name]['targets'][target]
+        target = self.data[img_name]['targets'][target]
+        return np.array(target)
+
+
+    def _xyxy_to_ncxncywh(self, boxes: np.ndarray, img_shape: tuple) -> np.ndarray:
+        boxes = torchvision.ops.box_convert(
+                torch.as_tensor(boxes, dtype=torch.float32), "xyxy", "cxcywh"
+        )
+        # Normalize
+        boxes[:, [1, 3]] /= img_shape[0]
+        boxes[:, [0, 2]] /= img_shape[1]
+        return boxes
 
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         img = self._load_image(index)
-        target = self._load_target(index, 'bboxes')
+        original_img_size = img.shape[:2]
+        boxes = self._load_target(index, 'bboxes')
         labels = self._load_target(index, 'classes')
 
         # TODO: make a sanity check!!!
         if self.transforms is not None:
-            transformed = self.transforms(image=img, bboxes=target, labels=labels)
+            transformed = self.transforms(image=img, bboxes=boxes, labels=labels)
             img = transformed['image']
-            target = transformed['bboxes']
-            labels = transformed['labels']
+            boxes = np.array(transformed['bboxes'])
+            labels = np.array(transformed['labels'])
 
         img = img / 255.0
 
+        if len(boxes) != 0:
+            valid_boxes = (boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])
+            boxes = boxes[valid_boxes]
+            labels = labels[valid_boxes]
 
-        return img, target, labels
+            boxes = self._xyxy_to_ncxncywh(boxes, img.shape)
+
+            # TODO: Inspect whats that
+            print("Hstack:")
+            print(torch.zeros((len(boxes), 1)).shape)
+            print(torch.as_tensor(labels, dtype=torch.float32).shape)
+            print(boxes.shape)
+            labels_out = torch.hstack(
+                (
+                    torch.zeros((len(boxes), 1)),
+                    torch.as_tensor(labels, dtype=torch.float32),
+                    boxes,
+                )
+            )
+        else:
+            labels_out = torch.zeros((1, 6))
+
+        # Potentially here also id as tensor ?
+        return (
+            torch.as_tensor(img.transpose(2, 0, 1).astype("float32")),
+            labels_out,
+            torch.as_tensor(index),
+            torch.as_tensor(original_img_size)
+        )
 
 
     def __len__(self) -> int:
