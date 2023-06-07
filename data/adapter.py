@@ -19,11 +19,11 @@ def load_gwhd_df(path: str) -> pd.DataFrame:
     df['class_id'] = 0 # Wheat head
     df['class_name'] = 'wheat_head'
     df = df.assign(Box=df['BoxesString'].str.split(';')).explode('Box').reset_index(drop=True)
-    df[['x_min', 'y_min', 'x_max', 'y_max']] = df['Box'].str.split(' ', expand=True)
+    df[['xmin', 'ymin', 'xmax', 'ymax']] = df['Box'].str.split(' ', expand=True)
     df['has_annotation'] = df.loc[:, 'Box'] != 'no_box'
-    df.loc[df.loc[:, 'Box'] == 'no_box', ['Box', 'x_min', 'y_min', 'x_max', 'y_max', 'class_id', 'class_name']] = \
+    df.loc[df.loc[:, 'Box'] == 'no_box', ['Box', 'xmin', 'ymin', 'xmax', 'ymax', 'class_id', 'class_name']] = \
         [np.nan for _ in range(6)] + ['background']
-    df[['x_min', 'y_min', 'x_max', 'y_max']] = df[['x_min', 'y_min', 'x_max', 'y_max']].astype(float)
+    df[['xmin', 'ymin', 'xmax', 'ymax']] = df[['xmin', 'ymin', 'xmax', 'ymax']].astype(float)
 
     return df
 
@@ -66,7 +66,7 @@ class GwhdToYoloAdapter(torch.utils.data.Dataset):
         image_hw = image.shape[:2]
 
         if image_info.has_annotation.any():
-            xyxy_bboxes = image_info[["x_min", "y_min", "x_max", "y_max"]].values
+            xyxy_bboxes = image_info[["xmin", "ymin", "xmax", "ymax"]].values
             class_ids = image_info["class_id"].values
         else:
             xyxy_bboxes = np.array([])
