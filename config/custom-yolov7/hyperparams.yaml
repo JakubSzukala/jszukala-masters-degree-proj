@@ -1,0 +1,41 @@
+dataset:
+  path: '<fill>'
+  images_dir: 'images/'
+  subsets:
+    train: 'competition_train.csv'
+    test: 'competition_test.csv'
+    val: 'competition_val.csv'
+
+model_name: 'yolov7-tiny'
+
+optimizer:
+  name: 'adam'
+  lr: 0.001
+  momentum: 0.9
+  nesterov: True
+
+trainer_params:
+  filter_eval_predictions_fn_params:
+    confidence_threshold: 0.01
+    nms_threshold: 0.3
+
+  mean_average_precision_callback_params:
+    iou_threshold: 0.2
+
+  save_best_model_callback_params:
+    watch_metric: 'map'
+    greater_is_better: True
+
+  early_stopping_callback_params:
+    patience: 3
+    watch_metric: 'map'
+    greater_is_better: True
+    early_stopping_threshold: 0.001
+
+training_params:
+  num_epochs: 100
+  per_device_batch_size: 1
+  cosine_lr_scheduler_params:
+    num_warmup_epochs: 5
+    num_cooldown_epochs: 5
+    k_decay: 2
