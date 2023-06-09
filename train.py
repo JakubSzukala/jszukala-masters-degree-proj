@@ -29,6 +29,8 @@ from pytorch_accelerated.callbacks import (
 
 from functools import partial
 
+from model.metrics import PrecisionRecallMetricsCallback
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to config file')
 
@@ -63,9 +65,12 @@ yolo_val_ds = Yolov7Dataset(val_adapter)
 image_tensor, labels, image_id, image_size = yolo_train_ds[0]
 
 # Denormalize boxes
+print(f"labels example: {labels[0]}")
 boxes = labels[:, 2:]
+print(f"Boxes normalized: {boxes}")
 boxes[:, [0, 2]] *= image_size[1]
 boxes[:, [1, 3]] *= image_size[0]
+print(f"Boxes denormalized: {boxes}")
 
 #show_image(image_tensor.permute(1, 2, 0), boxes.tolist(), None, 'cxcywh')
 
@@ -99,6 +104,10 @@ early_stopping_threshold = config['trainer_params']['early_stopping_callback_par
 watch_metric_sbm = config['trainer_params']['save_best_model_callback_params']['watch_metric']
 greater_is_better_sbm = config['trainer_params']['save_best_model_callback_params']['greater_is_better']
 
+# Fix random seed
+torch.manual_seed(0)
+np.random.seed(0)
+
 # Create trainer and train
 trainer = Yolov7Trainer(
     model=model,
@@ -119,11 +128,16 @@ trainer = Yolov7Trainer(
             watch_metric=watch_metric_sbm,
             greater_is_better=greater_is_better_sbm
         ),
-        EarlyStoppingCallback(
-            early_stopping_patience=patience,
-            watch_metric=watch_metric_es,
-            greater_is_better=greater_is_better_es,
-            early_stopping_threshold=early_stopping_threshold,
+        #EarlyStoppingCallback(
+            #early_stopping_patience=patience,
+            #watch_metric=watch_metric_es,
+            #greater_is_better=greater_is_better_es,
+            #early_stopping_threshold=early_stopping_threshold,
+        #),
+        PrecisionRecallMetricsCallback(
+            task='binary',
+            num_classes=1,
+            average='macro'
         ),
         *get_default_callbacks(progress_bar=True),
     ],
