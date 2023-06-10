@@ -73,8 +73,8 @@ boxes[:, [1, 3]] *= image_size[0]
 print(f"Boxes denormalized: {boxes}")
 
 #show_image(image_tensor.permute(1, 2, 0), boxes.tolist(), None, 'cxcywh')
-
-model = create_yolov7_model('yolov7-tiny', num_classes=1, pretrained=True)
+model_name = config['model_name']
+model = create_yolov7_model(model_name, num_classes=1, pretrained=True)
 loss_func = create_yolov7_loss(model, image_size=image_size[0])
 
 if config['optimizer']['name'] == 'adam':
@@ -161,17 +161,3 @@ trainer.train(
         ),
         collate_fn=yolov7_collate_fn,
 )
-
-sys.exit(0)
-model.eval()
-
-with torch.no_grad():
-    outputs = model(image_tensor[None])
-    preds = model.postprocess(outputs, conf_thres=0.5, multiple_labels_per_box=False)
-
-
-preds[0].shape #xyxy coordinates, confidence score, class id
-
-filtered_preds = filter_eval_predictions(preds, confidence_threshold=0.5)
-filtered_preds[0].shape
-
