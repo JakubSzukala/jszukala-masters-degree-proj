@@ -81,24 +81,24 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         )
 
         # Convert ncxncywh to xyxy
-        print(f"Image sizes: {original_image_sizes}")
+        #print(f"Image sizes: {original_image_sizes}")
         gt_boxes = ground_truth_labels[:, 2:]
         gt_boxes[:, [0, 2]] *= original_image_sizes[0, 1]
         gt_boxes[:, [1, 3]] *= original_image_sizes[0, 0]
         for i, row in enumerate(gt_boxes):
             gt_boxes[i, :] = cxcywh_to_xyxy(row)
 
-        print("Compare gt boxes and preds:")
-        print(f"Ground truth boxes:\n{gt_boxes[0]}")
-        print(f"Predicted boxes:\n{preds[0]}")
+        #print("Compare gt boxes and preds:")
+        #print(f"Ground truth boxes:\n{gt_boxes[0]}")
+        #print(f"Predicted boxes:\n{preds[0]}")
 
         # Prepare IoU matrix between gt boxes and preds
         iou_matrix = torchvision.ops.box_iou(gt_boxes, preds[:, :4])
         matched_boxes = iou_matrix.max(dim=1).values.ceil()
 
-        print(f"iou_matrix shape: {iou_matrix.shape}")
-        print(f"iou_matrix:\n{iou_matrix}")
-        print(f"Max values in iou_matrix / matched boxes: n={matched_boxes.shape} {matched_boxes}")
+        #print(f"iou_matrix shape: {iou_matrix.shape}")
+        #print(f"iou_matrix:\n{iou_matrix}")
+        #print(f"Max values in iou_matrix / matched boxes: n={matched_boxes.shape} {matched_boxes}")
         print(f"Preds shape: {preds.shape}, ground truths shape: {gt_boxes.shape}")
         if gt_boxes.shape[0] < preds.shape[0]:
             zero_padding_len = preds.shape[0] - gt_boxes.shape[0]
@@ -112,14 +112,18 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
                 torch.ones(ones_padding_len).to(trainer.device)
             ])
         else:
-            zero_padding_len = gt_boxes.shape[0] - preds.shape[0]
+            #print("HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+            #zero_padding_len = gt_boxes.shape[0] - preds.shape[0]
+            #print(f"zero_padding_len: {zero_padding_len}")
+            #print(f"matched_boxes shape: {matched_boxes.shape}")
+            #metric_input_gt = torch.ones(gt_boxes.shape[0])
+            #metric_input_preds = torch.hstack([
+                #matched_boxes,
+                #torch.zeros(zero_padding_len).to(trainer.device)
+            #])
             metric_input_gt = torch.ones(gt_boxes.shape[0])
-            metric_input_preds = torch.hstack([
-                matched_boxes,
-                torch.zeros(zero_padding_len).to(trainer.device)
-            ])
+            metric_input_preds = matched_boxes
         metric_input_gt = metric_input_gt.to(trainer.device)
-        print(f"inputs on the devices: {metric_input_gt.device}, {metric_input_preds.device}")
         self.metrics.update(metric_input_preds, metric_input_gt)
 
 
