@@ -9,8 +9,10 @@ from torchmetrics import (
     PrecisionRecallCurve,
     Recall,
     F1Score,
-    ConfusionMatrix
+    ConfusionMatrix,
 )
+
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 from pytorch_accelerated.callbacks import TrainerCallback
 
@@ -69,6 +71,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
     def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
         # gt labels: [ 1, class id, normalized cxcywh ]
         # preds: [ xyxy, score, class_id, image_id ]
+        print(f"Len of batch: {len(batch)}")
         preds = batch_output['predictions'].to(trainer.device)
         images, ground_truth_labels, image_ids, original_image_sizes = (
             batch[0],
@@ -76,6 +79,9 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
+        print(f"images: {images.shape} and images ids: {image_ids}")
+        print(f"ground_truth_labels: {ground_truth_labels.shape}")
+        print(f"ground_truth_labels example: {ground_truth_labels}")
 
         # Denormalize and convert ncxncywh to xyxy
         gt_boxes = ground_truth_labels[:, 2:].clone()
@@ -180,3 +186,70 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         trainer.run_history.update_metric('f1', computed_metrics['f1'].cpu())
         self.metrics.reset()
 
+
+class MeanAveragePrecisionCallback(TrainerCallback):
+    def __init__(self, iou_thresholds=None):
+        super().__init__()
+        if iou_thresholds is None:
+            self.iou_thresholds = torch.arange(0.5, 0.75, 0.05)
+        self.metric = MeanAveragePrecision(
+            iou_thresholds=self.iou_thresholds
+        )
+
+    def _move_to_device(self, trainer):
+        self.metric.to(trainer.device)
+
+
+    def on_training_run_start(self, trainer, **kwargs):
+        self._move_to_device(trainer)
+
+
+    def on_evaluation_run_start(self, trainer, **kwargs):
+        self._move_to_device(trainer)
+
+
+    def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
+        # gt labels: [ 1, class id, normalized cxcywh ]
+        # preds: [ xyxy, score, class_id, image_id ]
+        preds = batch_output['predictions'].to(trainer.device)
+        images, ground_truth_labels, image_ids, original_image_sizes = (
+            batch[0],
+            batch[1],
+            batch[2],
+            batch[3],
+        )
+
+        # Denormalize and convert ncxncywh to xyxy
+        gt_boxes = ground_truth_labels[:, 2:].clone()
+        gt_boxes[:, [0, 2]] *= original_image_sizes[0, 1]
+        gt_boxes[:, [1, 3]] *= original_image_sizes[0, 0]
+        for i, row in enumerate(gt_boxes):
+            gt_boxes[i, :] = cxcywh_to_xyxy(row)
+
+        # No predictions and no ground truths
+        # This would mean updating TN which are irrelevant for recall and precision
+        #if preds.shape[0] == 0 and gt_boxes.shape[0] == 0:
+            #return
+
+        ## Any prediction made when no gt boxes are present is a false positive
+        #if gt_boxes.shape[0] == 0:
+            #metric_input_gt = torch.zeros(preds.shape[0], dtype=torch.int, device=trainer.device)
+            #metric_input_preds = preds[:, 4]
+            #self.metric.update(metric_input_preds, metric_input_gt)
+            #return
+
+        ## No predictions made when gt boxes are present is a false negative
+        #if preds.shape[0] == 0:
+            #metric_input_gt = torch.ones(gt_boxes.shape[0], dtype=torch.int, device=trainer.device)
+            #metric_input_preds = torch.zeros(gt_boxes.shape[0], device=trainer.device)
+            #self.metric.update(metric_input_preds, metric_input_gt)
+            #return
+
+        metric_input_gt = recorded_matches[:, 0].type(torch.int)
+        metric_input_preds = recorded_matches[:, 1]
+        self.metric.update(metric_input_preds, metric_input_gt)
+
+
+    def on_eval_epoch_end(self, trainer, **kwargs):
+        computed_metrics = self.metric.compute()
+        self.metric.reset()
