@@ -50,7 +50,7 @@ cd $YOLOV7_ROOT_DIR
 python train.py \
     --workers 8 \
     --device 0 \
-    --batch-size 1 \
+    --batch-size 8 \
     --data $PROJ_PATH/data/auto_gwhd_2021.yaml \
     --img 1024 1024 \
     --cfg $PROJ_PATH/config/yolov7.yaml \

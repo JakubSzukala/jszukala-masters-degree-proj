@@ -29,29 +29,29 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         self.num_classes = num_classes
         self.average = average
         self.metrics = MetricCollection({
-            'precision' : Precision(
-                task=task,
-                num_classes=num_classes,
-                average=average,
-                threshold=confidence_threshold
-            ).to(device),
-            'recall' : Recall(
-                task=task,
-                num_classes=num_classes,
-                average=average,
-                threshold=confidence_threshold
-            ).to(device),
+            #'precision' : Precision(
+                #task=task,
+                #num_classes=num_classes,
+                #average=average,
+                #threshold=confidence_threshold
+            #).to(device),
+            #'recall' : Recall(
+                #task=task,
+                #num_classes=num_classes,
+                #average=average,
+                #threshold=confidence_threshold
+            #).to(device),
             'pr_curve' : PrecisionRecallCurve(
                 task=task,
                 num_classes=num_classes,
                 average=average
             ).to(device),
-            'f1' : F1Score(
-                task=task,
-                num_classes=num_classes,
-                average=average,
-                threshold=confidence_threshold
-            ).to(device)
+            #'f1' : F1Score(
+                #task=task,
+                #num_classes=num_classes,
+                #average=average,
+                #threshold=confidence_threshold
+            #).to(device)
         })
 
     def _move_to_device(self, trainer):
@@ -67,7 +67,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
 
 
     def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
-        # gt labels: [ 1, class id, normalized cxcywh ]
+        # gt labels: [ 0, class id, normalized cxcywh ]
         # preds: [ xyxy, score, class_id, image_id ]
         preds = batch_output['predictions'].to(trainer.device)
         images, ground_truth_labels, image_ids, original_image_sizes = (
@@ -136,6 +136,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             iou_matrix[:, best_match_pred_idx] = -1
 
         # Assert that there are no duplicate pred indices
+        print(f"recorded_matches: {recorded_matches[:gt_boxes.shape[0], :]}")
         assert len(preds_match_idices) == len(set(preds_match_idices))
 
         if preds.shape[0] > gt_boxes.shape[0]:
@@ -144,6 +145,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             mask[preds_match_idices] = False
             preds_without_matches = preds[mask, :]
             confidence_scores_padding = preds_without_matches[:, 4]
+            print(f"HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE preds without matches (FP): {preds_without_matches.shape}")
             assert confidence_scores_padding.shape[0] == padding_size
             padding = torch.hstack([
                 torch.zeros(padding_size, 1, device=trainer.device),
@@ -172,11 +174,11 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
     def on_eval_epoch_end(self, trainer, **kwargs):
         computed_metrics = self.metrics.compute()
         pr_curve_precision, pr_curve_recall, pr_curve_thresholds = computed_metrics['pr_curve']
-        trainer.run_history.update_metric('precision', computed_metrics['precision'].cpu())
-        trainer.run_history.update_metric('recall', computed_metrics['recall'].cpu())
+        #trainer.run_history.update_metric('precision', computed_metrics['precision'].cpu())
+        #trainer.run_history.update_metric('recall', computed_metrics['recall'].cpu())
         trainer.run_history.update_metric('pr_curve_precision', pr_curve_precision.cpu())
         trainer.run_history.update_metric('pr_curve_recall', pr_curve_recall.cpu())
         trainer.run_history.update_metric('pr_curve_thresholds', pr_curve_thresholds.cpu())
-        trainer.run_history.update_metric('f1', computed_metrics['f1'].cpu())
+        #trainer.run_history.update_metric('f1', computed_metrics['f1'].cpu())
         self.metrics.reset()
 

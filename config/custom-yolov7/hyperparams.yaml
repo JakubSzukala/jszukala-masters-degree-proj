@@ -1,10 +1,10 @@
 dataset:
-  path: '<fill>'
+  path: '/home/js/gwhd_2021/'
   images_dir: 'images/'
   subsets:
-    train: 'competition_train.csv'
-    test: 'competition_test.csv'
-    val: 'competition_val.csv'
+    train: 'overfit_train.csv'
+    test: 'overfit_test.csv'
+    val: 'overfit_val.csv'
 
 model_name: 'yolov7-tiny'
 
@@ -16,25 +16,25 @@ optimizer:
 
 trainer_params:
   filter_eval_predictions_fn_params:
-    confidence_threshold: 0.01
+    confidence_threshold: 0.4
     nms_threshold: 0.3
 
   mean_average_precision_callback_params:
-    iou_threshold: 0.2
+    iou_threshold: 0.5
 
   save_best_model_callback_params:
     watch_metric: 'map'
     greater_is_better: True
 
   early_stopping_callback_params:
-    patience: 3
-    watch_metric: 'map'
+    patience: 15
+    watch_metric: 'precision'
     greater_is_better: True
     early_stopping_threshold: 0.001
 
 training_params:
-  num_epochs: 100
-  per_device_batch_size: 1
+  num_epochs: 300
+  per_device_batch_size: 2
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
