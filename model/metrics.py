@@ -31,7 +31,6 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         self.metrics = MetricCollection({
             'precision': Precision(task=task, num_classes=num_classes, average=average).to(device),
             'recall': Recall(task=task, num_classes=num_classes, average=average).to(device),
-            #'pr_curve': PrecisionRecallCurve(task=task, num_classes=num_classes, average=average)
         })
 
 
@@ -57,7 +56,6 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
-        print(f"preds example: {preds[:5]}")
 
         # Denormalize and convert ncxncywh to xyxy
         gt_boxes = ground_truth_labels[:, 2:].clone()
@@ -65,7 +63,6 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         gt_boxes[:, [1, 3]] *= original_image_sizes[0, 0]
         for i, row in enumerate(gt_boxes):
             gt_boxes[i, :] = cxcywh_to_xyxy(row)
-        print(f"gt example: {gt_boxes[:5]}")
 
         # No predictions and no ground truths
         # This would mean updating TN which are irrelevant for recall and precision
@@ -144,12 +141,8 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
 
     def on_eval_epoch_end(self, trainer, **kwargs):
         metrics = self.metrics.compute()
-        # Here we can record metrics and store them in run history object.
-        # They will also be printed if PrintProgressCallback is used (it is used)
         trainer.run_history.update_metric('precision', metrics['precision'].cpu())
         trainer.run_history.update_metric('recall', metrics['recall'].cpu())
-        #trainer.run_history.update_metric('pr_curve', metrics['pr_curve'].cpu())
-
         self.metrics.reset()
 
 
@@ -183,7 +176,6 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
-        print(f"in curve preds example: {preds[:5]}")
 
         # Denormalize and convert ncxncywh to xyxy
         gt_boxes = ground_truth_labels[:, 2:].clone()
@@ -191,17 +183,14 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
         gt_boxes[:, [1, 3]] *= original_image_sizes[0, 0]
         for i, row in enumerate(gt_boxes):
             gt_boxes[i, :] = cxcywh_to_xyxy(row)
-        print(f"in curve gt example: {gt_boxes[:5]}")
 
         # No predictions and no ground truths
         # This would mean updating TN which are irrelevant for recall and precision
         if preds.shape[0] == 0 and gt_boxes.shape[0] == 0:
-            print("Edge case 1")
             return
 
         # Any prediction made when no gt boxes are present is a false positive
         if gt_boxes.shape[0] == 0:
-            print("Edge case 2")
             metric_input_gt = torch.zeros(preds.shape[0], dtype=torch.int)
             metric_input_preds = preds[:, 4]
             self.metrics.update(metric_input_preds, metric_input_gt)
@@ -209,13 +198,11 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
 
         # No predictions made when gt boxes are present is a false negative
         if preds.shape[0] == 0:
-            print("Edge case 3")
             metric_input_gt = torch.ones(gt_boxes.shape[0], dtype=torch.int)
             metric_input_preds = torch.zeros(gt_boxes.shape[0])
             self.metrics.update(metric_input_preds, metric_input_gt)
             return
 
-        print("No edge case")
         iou_matrix = torchvision.ops.box_iou(gt_boxes, preds[:, :4])
 
         results_dim = min(gt_boxes.shape[0], preds.shape[0])
@@ -281,20 +268,12 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
             ])
         metric_input_gt = recorded_matches[:, 0].type(torch.int).to(trainer.device)
         metric_input_preds = recorded_matches[:, 1].to(trainer.device)
-        print(f"inputs are on devices: {metric_input_gt.device}, {metric_input_preds.device}")
-        print(f"metric input gt: {metric_input_gt[:5]}")
-        print(f"metric input preds: {metric_input_preds[:5]}")
         self.metric.update(metric_input_preds, metric_input_gt)
 
 
     def on_eval_epoch_end(self, trainer, **kwargs):
         pr_curve_precision, pr_curve_recall, pr_curve_thresholds = self.metric.compute()
-        # Here we can record metrics and store them in run history object.
-        # They will also be printed if PrintProgressCallback is used (it is used)
-        #trainer.run_history.update_metric('precision', metrics['precision'].cpu())
-        #trainer.run_history.update_metric('recall', metrics['recall'].cpu())
         trainer.run_history.update_metric('pr_curve_precision', pr_curve_precision.cpu())
         trainer.run_history.update_metric('pr_curve_recall', pr_curve_recall.cpu())
         trainer.run_history.update_metric('pr_curve_thresholds', pr_curve_thresholds.cpu())
-
         self.metrics.reset()
