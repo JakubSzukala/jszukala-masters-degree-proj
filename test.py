@@ -18,7 +18,8 @@ hyperparameters_config_file = parser.parse_args().config
 with open(hyperparameters_config_file) as f:
     config = yaml.safe_load(f)
 
-model = create_yolov7_model('yolov7-tiny', num_classes=1, pretrained=False)
+model_name = config['model_name']
+model = create_yolov7_model(model_name, num_classes=1, pretrained=False)
 state_dict = torch.load('best_model.pt')
 model.load_state_dict(state_dict=state_dict['model_state_dict'])
 model.eval()

@@ -136,11 +136,11 @@ trainer = Yolov7Trainer(
             num_classes=1,
             average='macro'
         ),
-        #PrecisionRecallCurveMetricsCallback(
-            #task='binary',
-            #num_classes=1,
-            #average='macro'
-        #),
+        PrecisionRecallCurveMetricsCallback(
+            task='binary',
+            num_classes=1,
+            average='macro'
+        ),
         *get_default_callbacks(progress_bar=True),
     ],
 )
@@ -162,4 +162,10 @@ trainer.train(
             k_decay=k_decay,
         ),
         collate_fn=yolov7_collate_fn,
+)
+
+trainer.evaluate(
+    dataset=yolo_val_ds,
+    per_device_batch_size=batch_size,
+    collate_fn=yolov7_collate_fn
 )
