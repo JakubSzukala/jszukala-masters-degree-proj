@@ -71,15 +71,15 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
 
         # Any prediction made when no gt boxes are present is a false positive
         if gt_boxes.shape[0] == 0:
-            metric_input_gt = torch.zeros(preds.shape[0])
-            metric_input_preds = torch.ones(preds.shape[0])
+            metric_input_gt = torch.zeros(preds.shape[0], device=trainer.device)
+            metric_input_preds = torch.ones(preds.shape[0], device=trainer.device)
             self.metrics.update(metric_input_preds, metric_input_gt)
             return
 
         # No predictions made when gt boxes are present is a false negative
         if preds.shape[0] == 0:
-            metric_input_gt = torch.ones(gt_boxes.shape[0])
-            metric_input_preds = torch.zeros(gt_boxes.shape[0])
+            metric_input_gt = torch.ones(gt_boxes.shape[0], device=trainer.device)
+            metric_input_preds = torch.zeros(gt_boxes.shape[0], device=trainer.device)
             self.metrics.update(metric_input_preds, metric_input_gt)
             return
 
@@ -89,7 +89,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
 
         # https://github.com/rafaelpadilla/review_object_detection_metrics/blob/main/src/evaluators/tube_evaluator.py#L132
         results_dim = min(gt_boxes.shape[0], preds.shape[0])
-        recorded_matches = torch.empty(results_dim, 2)
+        recorded_matches = torch.empty(results_dim, 2, device=trainer.device)
         for i in range(results_dim):
             # Find best iou for each gt
             best_match_iou_vec, best_match_pred_idx_vec  = iou_matrix.max(dim=1)
@@ -100,39 +100,42 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             best_match_pred_idx = best_match_pred_idx_vec[best_match_gt_idx]
 
             assert best_match_iou_scalar == iou_matrix[best_match_gt_idx, best_match_pred_idx]
+            assert best_match_iou_scalar >= 0
 
             # Record the match
             recorded_matches[i, :] = torch.tensor([
                 1.0, # Ground truth
                 best_match_iou_scalar.ceil() # On hit =1 on miss =0
-            ])
+            ], device=trainer.device)
 
             # Set the matched gt and pred to -1 so that they are not matched again
             iou_matrix[best_match_gt_idx, :] = -1
             iou_matrix[:, best_match_pred_idx] = -1
-        recorded_matches, _ = torch.sort(recorded_matches, dim=0)
 
+        # If number of preds is different than number of gt boxes we need to pad
         if preds.shape[0] > gt_boxes.shape[0]:
             padding_size = preds.shape[0] - gt_boxes.shape[0]
             padding = torch.hstack([
-                torch.zeros(padding_size, 1),
-                torch.ones(padding_size, 1)
+                torch.zeros(padding_size, 1, device=trainer.device),
+                torch.ones(padding_size, 1, device=trainer.device)
             ])
             recorded_matches = torch.vstack([
                 recorded_matches,
                 padding
-            ])
+            ]) # Len should be equal to bigger of preds and gt_boxes
+            assert recorded_matches.shape[0] == preds.shape[0]
 
         elif preds.shape[0] < gt_boxes.shape[0]:
             padding_size = gt_boxes.shape[0] - preds.shape[0]
             padding = torch.hstack([
-                torch.ones(padding_size, 1),
-                torch.zeros(padding_size, 1)
+                torch.ones(padding_size, 1, device=trainer.device),
+                torch.zeros(padding_size, 1, device=trainer.device)
             ])
             recorded_matches = torch.vstack([
                 recorded_matches,
                 padding
-            ])
+            ]) # Len should be equal to bigger of preds and gt_boxes
+            assert recorded_matches.shape[0] == gt_boxes.shape[0]
 
         metric_input_gt = recorded_matches[:, 0]
         metric_input_preds = recorded_matches[:, 1]
@@ -191,22 +194,22 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
 
         # Any prediction made when no gt boxes are present is a false positive
         if gt_boxes.shape[0] == 0:
-            metric_input_gt = torch.zeros(preds.shape[0], dtype=torch.int)
+            metric_input_gt = torch.zeros(preds.shape[0], dtype=torch.int, device=trainer.device)
             metric_input_preds = preds[:, 4]
-            self.metrics.update(metric_input_preds, metric_input_gt)
+            self.metric.update(metric_input_preds, metric_input_gt)
             return
 
-        # No predictions made when gt boxes are present is a false negative
+        # No predictions made when gt line 210oxes are present is a false negative
         if preds.shape[0] == 0:
-            metric_input_gt = torch.ones(gt_boxes.shape[0], dtype=torch.int)
-            metric_input_preds = torch.zeros(gt_boxes.shape[0])
-            self.metrics.update(metric_input_preds, metric_input_gt)
+            metric_input_gt = torch.ones(gt_boxes.shape[0], dtype=torch.int, device=trainer.device)
+            metric_input_preds = torch.zeros(gt_boxes.shape[0], device=trainer.device)
+            self.metric.update(metric_input_preds, metric_input_gt)
             return
 
         iou_matrix = torchvision.ops.box_iou(gt_boxes, preds[:, :4])
 
         results_dim = min(gt_boxes.shape[0], preds.shape[0])
-        recorded_matches = torch.empty(results_dim, 2)
+        recorded_matches = torch.empty(results_dim, 2, device=trainer.device)
         preds_match_idices = []
         for i in range(results_dim):
             # Find best iou for each gt
@@ -227,7 +230,7 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
             recorded_matches[i, :] = torch.tensor([
                 1.0, # Ground truth
                 confidence_score
-            ])
+            ], device=trainer.device)
 
             # Record pred index of a match
             preds_match_idices.append(best_match_pred_idx)
@@ -235,32 +238,31 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
             # Set the matched gt and pred to -1 so that they are not matched again
             iou_matrix[best_match_gt_idx, :] = -1
             iou_matrix[:, best_match_pred_idx] = -1
-        recorded_matches, _ = torch.sort(recorded_matches, dim=0)
 
         # Assert that there are no duplicate pred indices
         assert len(preds_match_idices) == len(set(preds_match_idices))
 
         if preds.shape[0] > gt_boxes.shape[0]:
             padding_size = preds.shape[0] - gt_boxes.shape[0]
-            mask = torch.ones(preds.shape[0], dtype=torch.bool)
+            mask = torch.ones(preds.shape[0], dtype=torch.bool, device=trainer.device)
             mask[preds_match_idices] = False
             preds_without_matches = preds[mask, :]
             confidence_scores_padding = preds_without_matches[:, 4]
             assert confidence_scores_padding.shape[0] == padding_size
             padding = torch.hstack([
-                torch.zeros(padding_size, 1, device='cuda:0'),
+                torch.zeros(padding_size, 1, device=trainer.device),
                 confidence_scores_padding.unsqueeze(1)
             ])
             recorded_matches = torch.vstack([
-                recorded_matches.to(trainer.device),
+                recorded_matches,
                 padding
             ])
 
         elif preds.shape[0] < gt_boxes.shape[0]:
             padding_size = gt_boxes.shape[0] - preds.shape[0]
             padding = torch.hstack([
-                torch.ones(padding_size, 1),
-                torch.zeros(padding_size, 1)
+                torch.ones(padding_size, 1, device=trainer.device),
+                torch.zeros(padding_size, 1, device=trainer.device)
             ])
             recorded_matches = torch.vstack([
                 recorded_matches,
