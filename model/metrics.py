@@ -91,22 +91,55 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         iou_matrix = torchvision.ops.box_iou(gt_boxes, preds[:, :4])
         matched_boxes = iou_matrix.max(dim=1).values.ceil()
 
-        # Note: matched_boxes.shape[0] == gt_boxes.shape[0]
-        if matched_boxes.shape[0] < preds.shape[0]:
-            zero_padding_len = preds.shape[0] - matched_boxes.shape[0]
-            metric_input_gt = torch.hstack([
-                torch.ones(gt_boxes.shape[0]).to(trainer.device),
-                torch.zeros(zero_padding_len).to(trainer.device)
+        # https://github.com/rafaelpadilla/review_object_detection_metrics/blob/main/src/evaluators/tube_evaluator.py#L132
+        results_dim = min(gt_boxes.shape[0], preds.shape[0])
+        recorded_matches = torch.empty(results_dim, 2)
+        for i in range(results_dim):
+            # Find best iou for each gt
+            best_match_iou_vec, best_match_pred_idx_vec  = iou_matrix.max(dim=1)
+
+            # Of these find which gt is best matched
+            best_match_iou_scalar = best_match_iou_vec.max()
+            best_match_gt_idx = best_match_iou_vec.argmax()
+            best_match_pred_idx = best_match_pred_idx_vec[best_match_gt_idx]
+
+            assert best_match_iou_scalar == iou_matrix[best_match_gt_idx, best_match_pred_idx]
+
+            # Record the match
+            recorded_matches[i, :] = torch.tensor([
+                1.0, # Ground truth
+                best_match_iou_scalar.ceil() # On hit =1 on miss =0
             ])
-            ones_padding_len = preds.shape[0] - matched_boxes.shape[0]
-            metric_input_preds = torch.hstack([
-                matched_boxes,
-                torch.ones(ones_padding_len).to(trainer.device)
+
+            # Set the matched gt and pred to -1 so that they are not matched again
+            iou_matrix[best_match_gt_idx, :] = -1
+            iou_matrix[:, best_match_pred_idx] = -1
+        recorded_matches, _ = torch.sort(recorded_matches, dim=0)
+
+        if preds.shape[0] > gt_boxes.shape[0]:
+            padding_size = preds.shape[0] - gt_boxes.shape[0]
+            padding = torch.hstack([
+                torch.zeros(padding_size, 1),
+                torch.ones(padding_size, 1)
             ])
-        # No padding needed
-        else:
-            metric_input_gt = torch.ones(gt_boxes.shape[0]).to(trainer.device)
-            metric_input_preds = matched_boxes
+            recorded_matches = torch.vstack([
+                recorded_matches,
+                padding
+            ])
+
+        elif preds.shape[0] < gt_boxes.shape[0]:
+            padding_size = gt_boxes.shape[0] - preds.shape[0]
+            padding = torch.hstack([
+                torch.ones(padding_size, 1),
+                torch.zeros(padding_size, 1)
+            ])
+            recorded_matches = torch.vstack([
+                recorded_matches,
+                padding
+            ])
+
+        metric_input_gt = recorded_matches[:, 0]
+        metric_input_preds = recorded_matches[:, 1]
         self.metrics.update(metric_input_preds, metric_input_gt)
 
 

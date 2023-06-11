@@ -29,7 +29,7 @@ from pytorch_accelerated.callbacks import (
 
 from functools import partial
 
-from model.metrics import PrecisionRecallMetricsCallback
+from model.metrics import PrecisionRecallMetricsCallback, PrecisionRecallCurveMetricsCallback
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to config file')
@@ -65,12 +65,9 @@ yolo_val_ds = Yolov7Dataset(val_adapter)
 image_tensor, labels, image_id, image_size = yolo_train_ds[0]
 
 # Denormalize boxes
-print(f"labels example: {labels[0]}")
 boxes = labels[:, 2:]
-print(f"Boxes normalized: {boxes}")
 boxes[:, [0, 2]] *= image_size[1]
 boxes[:, [1, 3]] *= image_size[0]
-print(f"Boxes denormalized: {boxes}")
 
 #show_image(image_tensor.permute(1, 2, 0), boxes.tolist(), None, 'cxcywh')
 model_name = config['model_name']
@@ -139,6 +136,11 @@ trainer = Yolov7Trainer(
             num_classes=1,
             average='macro'
         ),
+        #PrecisionRecallCurveMetricsCallback(
+            #task='binary',
+            #num_classes=1,
+            #average='macro'
+        #),
         *get_default_callbacks(progress_bar=True),
     ],
 )
