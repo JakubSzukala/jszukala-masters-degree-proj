@@ -248,7 +248,7 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
             confidence_scores_padding = preds_without_matches[:, 4]
             assert confidence_scores_padding.shape[0] == padding_size
             padding = torch.hstack([
-                torch.zeros(padding_size, 1).to(trainer.device),
+                torch.zeros(padding_size, 1, device='cuda:0'),
                 confidence_scores_padding.unsqueeze(1)
             ])
             recorded_matches = torch.vstack([
@@ -266,8 +266,8 @@ class PrecisionRecallCurveMetricsCallback(TrainerCallback):
                 recorded_matches,
                 padding
             ])
-        metric_input_gt = recorded_matches[:, 0].type(torch.int).to(trainer.device)
-        metric_input_preds = recorded_matches[:, 1].to(trainer.device)
+        metric_input_gt = recorded_matches[:, 0].type(torch.int)
+        metric_input_preds = recorded_matches[:, 1]
         self.metric.update(metric_input_preds, metric_input_gt)
 
 
