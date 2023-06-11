@@ -2,6 +2,8 @@
 # coding: utf-8
 
 import sys
+
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 import os
@@ -134,7 +136,8 @@ trainer = Yolov7Trainer(
         PrecisionRecallMetricsCallback(
             task='binary',
             num_classes=1,
-            average='macro'
+            average='macro',
+            confidence_threshold=confidence_threshold
         ),
         #PrecisionRecallCurveMetricsCallback(
             #task='binary',
@@ -169,3 +172,16 @@ trainer.evaluate(
     per_device_batch_size=batch_size,
     collate_fn=yolov7_collate_fn
 )
+
+pr_curve_precision = trainer.run_history.get_latest_metric('pr_curve_precision')
+pr_curve_recall = trainer.run_history.get_latest_metric('pr_curve_recall')
+pr_curve_thresholds = trainer.run_history.get_latest_metric('pr_curve_thresholds')
+
+fig, ax = plt.subplots(2)
+ax[0].plot(pr_curve_recall, pr_curve_precision)
+ax[0].set_xlabel('Recall')
+ax[0].set_ylabel('Precision')
+ax[0].set_title('Precision-Recall curve')
+ax[1].plot(pr_curve_thresholds.flip(0))
+ax[1].set_xlabel('Confidence Thresholds')
+plt.show()
