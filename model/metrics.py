@@ -69,9 +69,8 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
 
 
     def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
-        # gt labels: [ 1, class id, normalized cxcywh ]
+        # gt labels: [ image_id, class id, normalized cxcywh ]
         # preds: [ xyxy, score, class_id, image_id ]
-        print(f"Len of batch: {len(batch)}")
         preds = batch_output['predictions'].to(trainer.device)
         images, ground_truth_labels, image_ids, original_image_sizes = (
             batch[0],
@@ -79,10 +78,26 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
-        print(f"images: {images.shape} and images ids: {image_ids}")
-        print(f"ground_truth_labels: {ground_truth_labels.shape}")
-        print(f"ground_truth_labels example: {ground_truth_labels}")
+        print(f"images n : {images.shape[0]}")
+        print(f"imageid from gt: {image_ids} and from preds: {torch.unique(preds[:, 6])}")
 
+        print(f"preds: {preds.shape}")
+        print(f"ground_truth_labels: {ground_truth_labels.shape}")
+        for batch_image_id, absolute_image_id in enumerate(image_ids):
+            single_image_preds = preds[preds[:, 6] == absolute_image_id, :]
+            single_image_gt = ground_truth_labels[ground_truth_labels[:, 0] == batch_image_id, :]
+            print(f"image_id: {absolute_image_id}")
+            print(f"single_image_preds: {single_image_preds.shape}")
+            print(f"single_image_gt: {single_image_gt.shape}")
+            print(f"single image preds out of all preds: {single_image_preds.shape[0]} / {preds.shape[0]}")
+            print(f"single image gt out of all gt: {single_image_gt.shape[0]} / {ground_truth_labels.shape[0]}")
+            print(f"example single image gt: {single_image_gt[:5]}")
+            print(f"example all gt : {ground_truth_labels[:5]}")
+            self.update_metrics(trainer, single_image_gt, single_image_preds, original_image_sizes)
+
+
+    def update_metrics(self, trainer, ground_truth_labels, preds, original_image_sizes):
+        # TODO: wrap it in another function
         # Denormalize and convert ncxncywh to xyxy
         gt_boxes = ground_truth_labels[:, 2:].clone()
         gt_boxes[:, [0, 2]] *= original_image_sizes[0, 1]
