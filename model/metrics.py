@@ -196,7 +196,10 @@ class MeanAveragePrecisionCallback(TrainerCallback):
         super().__init__()
         self.iou_thresholds = iou_thresholds
         if iou_thresholds is None:
-            self.iou_thresholds = list(torch.arange(0.5, 0.75, 0.05))
+            self.iou_thresholds = np.linspace(0.5, 0.75, 6).tolist()
+        self.th_string = f'{min(self.iou_thresholds())}' \
+            if len(self.iou_thresholds) == 1 \
+            else f'{min(self.iou_thresholds)}-{max(self.iou_thresholds)}'
         self.metric = MeanAveragePrecision(
             iou_thresholds=self.iou_thresholds
         )
@@ -255,5 +258,6 @@ class MeanAveragePrecisionCallback(TrainerCallback):
 
     def on_eval_epoch_end(self, trainer, **kwargs):
         computed_metrics = self.metric.compute() # TODO: Add range here
-        trainer.run_history.update_metric('mean_average_precision', computed_metrics['map'].cpu())
+        trainer.run_history.update_metric(f'mAP:{self.th_string}', computed_metrics['map'].cpu())
+        trainer.run_history.update_metric(f'mAP:0.5', computed_metrics['map_50'].cpu())
         self.metric.reset()

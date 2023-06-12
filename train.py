@@ -139,7 +139,7 @@ trainer = Yolov7Trainer(
             average='macro',
             confidence_threshold=confidence_threshold
         ),
-        MeanAveragePrecisionCallback([0.5]),
+        MeanAveragePrecisionCallback(np.linspace(0.5, 0.75, 6).tolist()),
         #PrecisionRecallCurveMetricsCallback(
             #task='binary',
             #num_classes=1,
