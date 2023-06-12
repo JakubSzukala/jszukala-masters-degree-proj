@@ -31,7 +31,7 @@ from pytorch_accelerated.callbacks import (
 
 from functools import partial
 
-from model.metrics import PrecisionRecallMetricsCallback
+from model.metrics import PrecisionRecallMetricsCallback, MeanAveragePrecisionCallback
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to config file')
@@ -139,6 +139,7 @@ trainer = Yolov7Trainer(
             average='macro',
             confidence_threshold=confidence_threshold
         ),
+        MeanAveragePrecisionCallback(),
         #PrecisionRecallCurveMetricsCallback(
             #task='binary',
             #num_classes=1,

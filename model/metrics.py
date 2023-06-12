@@ -78,21 +78,10 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
-        print(f"images n : {images.shape[0]}")
-        print(f"imageid from gt: {image_ids} and from preds: {torch.unique(preds[:, 6])}")
 
-        print(f"preds: {preds.shape}")
-        print(f"ground_truth_labels: {ground_truth_labels.shape}")
         for batch_image_id, absolute_image_id in enumerate(image_ids):
             single_image_preds = preds[preds[:, 6] == absolute_image_id, :]
             single_image_gt = ground_truth_labels[ground_truth_labels[:, 0] == batch_image_id, :]
-            print(f"image_id: {absolute_image_id}")
-            print(f"single_image_preds: {single_image_preds.shape}")
-            print(f"single_image_gt: {single_image_gt.shape}")
-            print(f"single image preds out of all preds: {single_image_preds.shape[0]} / {preds.shape[0]}")
-            print(f"single image gt out of all gt: {single_image_gt.shape[0]} / {ground_truth_labels.shape[0]}")
-            print(f"example single image gt: {single_image_gt[:5]}")
-            print(f"example all gt : {ground_truth_labels[:5]}")
             self.update_metrics(trainer, single_image_gt, single_image_preds, original_image_sizes)
 
 
@@ -208,7 +197,7 @@ class MeanAveragePrecisionCallback(TrainerCallback):
         if iou_thresholds is None:
             self.iou_thresholds = torch.arange(0.5, 0.75, 0.05)
         self.metric = MeanAveragePrecision(
-            iou_thresholds=self.iou_thresholds
+            #iou_thresholds=self.iou_thresholds
         )
 
     def _move_to_device(self, trainer):
@@ -260,11 +249,36 @@ class MeanAveragePrecisionCallback(TrainerCallback):
             #self.metric.update(metric_input_preds, metric_input_gt)
             #return
 
-        metric_input_gt = recorded_matches[:, 0].type(torch.int)
-        metric_input_preds = recorded_matches[:, 1]
+        metric_input_preds = []
+        metric_input_gt = []
+        for batch_image_id, absolute_image_id in enumerate(image_ids):
+            # gt labels: [ image_id, class id, normalized cxcywh ]
+            # preds: [ xyxy, score, class_id, image_id ]
+            single_image_preds = preds[preds[:, 6] == absolute_image_id, :]
+            single_image_gt = ground_truth_labels[ground_truth_labels[:, 0] == batch_image_id, :].clone()
+            # Denormalize and convert ncxncywh to xyxy
+            single_image_gt[:, [2, 4]] *= original_image_sizes[0, 1]
+            single_image_gt[:, [3, 5]] *= original_image_sizes[0, 0]
+            for i, row in enumerate(single_image_gt):
+                single_image_gt[i, 2:] = cxcywh_to_xyxy(row[2:])
+
+            metric_input_preds.append(
+                {
+                    'boxes' : single_image_preds[:, :4],
+                    'scores' : single_image_preds[:, 4],
+                    'labels' : single_image_preds[:, 5]
+                }
+            )
+            metric_input_gt.append(
+                {
+                    'boxes' : single_image_gt[:, 2:],
+                    'labels' : single_image_gt[:, 1]
+                }
+            )
         self.metric.update(metric_input_preds, metric_input_gt)
 
 
     def on_eval_epoch_end(self, trainer, **kwargs):
-        computed_metrics = self.metric.compute()
+        computed_metrics = self.metric.compute() # TODO: Add range here
+        trainer.run_history.update_metric('mean_average_precision', computed_metrics['map_50'].cpu())
         self.metric.reset()
