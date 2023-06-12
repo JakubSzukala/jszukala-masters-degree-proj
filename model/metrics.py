@@ -194,10 +194,11 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
 class MeanAveragePrecisionCallback(TrainerCallback):
     def __init__(self, iou_thresholds=None):
         super().__init__()
+        self.iou_thresholds = iou_thresholds
         if iou_thresholds is None:
-            self.iou_thresholds = torch.arange(0.5, 0.75, 0.05)
+            self.iou_thresholds = list(torch.arange(0.5, 0.75, 0.05))
         self.metric = MeanAveragePrecision(
-            #iou_thresholds=self.iou_thresholds
+            iou_thresholds=self.iou_thresholds
         )
 
     def _move_to_device(self, trainer):
@@ -230,25 +231,6 @@ class MeanAveragePrecisionCallback(TrainerCallback):
         for i, row in enumerate(gt_boxes):
             gt_boxes[i, :] = cxcywh_to_xyxy(row)
 
-        # No predictions and no ground truths
-        # This would mean updating TN which are irrelevant for recall and precision
-        #if preds.shape[0] == 0 and gt_boxes.shape[0] == 0:
-            #return
-
-        ## Any prediction made when no gt boxes are present is a false positive
-        #if gt_boxes.shape[0] == 0:
-            #metric_input_gt = torch.zeros(preds.shape[0], dtype=torch.int, device=trainer.device)
-            #metric_input_preds = preds[:, 4]
-            #self.metric.update(metric_input_preds, metric_input_gt)
-            #return
-
-        ## No predictions made when gt boxes are present is a false negative
-        #if preds.shape[0] == 0:
-            #metric_input_gt = torch.ones(gt_boxes.shape[0], dtype=torch.int, device=trainer.device)
-            #metric_input_preds = torch.zeros(gt_boxes.shape[0], device=trainer.device)
-            #self.metric.update(metric_input_preds, metric_input_gt)
-            #return
-
         metric_input_preds = []
         metric_input_gt = []
         for batch_image_id, absolute_image_id in enumerate(image_ids):
@@ -280,5 +262,5 @@ class MeanAveragePrecisionCallback(TrainerCallback):
 
     def on_eval_epoch_end(self, trainer, **kwargs):
         computed_metrics = self.metric.compute() # TODO: Add range here
-        trainer.run_history.update_metric('mean_average_precision', computed_metrics['map_50'].cpu())
+        trainer.run_history.update_metric('mean_average_precision', computed_metrics['map'].cpu())
         self.metric.reset()
