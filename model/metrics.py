@@ -224,13 +224,6 @@ class MeanAveragePrecisionCallback(TrainerCallback):
             batch[3],
         )
 
-        # Denormalize and convert ncxncywh to xyxy
-        gt_boxes = ground_truth_labels[:, 2:].clone()
-        gt_boxes[:, [0, 2]] *= original_image_sizes[0, 1]
-        gt_boxes[:, [1, 3]] *= original_image_sizes[0, 0]
-        for i, row in enumerate(gt_boxes):
-            gt_boxes[i, :] = cxcywh_to_xyxy(row)
-
         metric_input_preds = []
         metric_input_gt = []
         for batch_image_id, absolute_image_id in enumerate(image_ids):

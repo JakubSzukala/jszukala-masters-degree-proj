@@ -1,5 +1,5 @@
 dataset:
-  path: '/home/js/gwhd_2021/'
+  path: '/home/js/gwhd_2021'
   images_dir: 'images/'
   subsets:
     train: 'overfit_train.csv'
@@ -27,14 +27,14 @@ trainer_params:
     greater_is_better: True
 
   early_stopping_callback_params:
-    patience: 15
-    watch_metric: 'precision'
+    patience: 3
+    watch_metric: 'map'
     greater_is_better: True
     early_stopping_threshold: 0.001
 
 training_params:
   num_epochs: 300
-  per_device_batch_size: 2
+  per_device_batch_size: 4
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
