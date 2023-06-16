@@ -39,8 +39,12 @@ def _detection_results_to_classification_results(gt, preds, device):
     tensors of ground truths and confidence scores of matches.
 
     Args:
-        gt (torch.Tensor): Ground truths of shape [ xyxy ]
-        preds (torch.Tensor): Predictions of shape [ xyxy, score ]
+        gt (torch.Tensor): Ground truths [ xyxy ]
+        preds (torch.Tensor): Predictions [ xyxy, score ]
+        device (str): Device to move tensors to
+    Returns:
+        ground_truths (torch.Tensor): Ground truths
+        predictions (torch.Tensor): Confidence scores of matches
     """
     # No predictions and no ground truths
     # This would mean updating TN which are irrelevant for recall and precision
