@@ -4,7 +4,6 @@ import torchvision
 
 from torchmetrics import (
     MetricCollection,
-    Accuracy,
     Precision,
     PrecisionRecallCurve,
     Recall,
@@ -53,7 +52,13 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
                 num_classes=num_classes,
                 average=average,
                 threshold=confidence_threshold
-            ).to(device)
+            ).to(device),
+            'confusion_matrix' : ConfusionMatrix(
+                task=task,
+                num_classes=num_classes,
+                average=average,
+                threshold=confidence_threshold
+            ).to(device),
         })
 
     def _move_to_device(self, trainer):
@@ -79,6 +84,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             batch[3],
         )
 
+        # Isolate single image for calculation of metrics, this way no mixing will occur
         for batch_image_id, absolute_image_id in enumerate(image_ids):
             single_image_preds = preds[preds[:, 6] == absolute_image_id, :]
             single_image_gt = ground_truth_labels[ground_truth_labels[:, 0] == batch_image_id, :]
@@ -188,6 +194,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         trainer.run_history.update_metric('pr_curve_recall', pr_curve_recall.cpu())
         trainer.run_history.update_metric('pr_curve_thresholds', pr_curve_thresholds.cpu())
         trainer.run_history.update_metric('f1', computed_metrics['f1'].cpu())
+        trainer.run_history.update_metric('confusion_matrix', computed_metrics['confusion_matrix'].cpu())
         self.metrics.reset()
 
 
