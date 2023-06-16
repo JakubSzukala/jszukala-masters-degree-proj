@@ -17,10 +17,117 @@ from pytorch_accelerated.callbacks import TrainerCallback
 
 import numpy as np
 
+def _yolo_to_xyxy(boxes, image_sizes):
+    def cxcywh_to_xyxy(box):
+        x, y, w, h = box
+        return torch.tensor([x - w / 2, y - h / 2, x + w / 2, y + h / 2])
 
-def cxcywh_to_xyxy(box):
-            x, y, w, h = box
-            return torch.tensor([x - w / 2, y - h / 2, x + w / 2, y + h / 2])
+    # Denormalize
+    boxes[:, [0, 2]] *= image_sizes[0, 1]
+    boxes[:, [1, 3]] *= image_sizes[0, 0]
+
+    # Convert from denormalized yolo format to xyxy
+    for i, row in enumerate(boxes):
+        boxes[i, :] = cxcywh_to_xyxy(row)
+    return boxes
+
+
+def _detection_results_to_classification_results(gt, preds, device):
+    """
+    Function that takes ground truths and preds, from detection model,
+    matches most likely prediction with ground truth and returns
+    tensors of ground truths and confidence scores of matches.
+
+    Args:
+        gt (torch.Tensor): Ground truths of shape [ xyxy ]
+        preds (torch.Tensor): Predictions of shape [ xyxy, score ]
+    """
+    # No predictions and no ground truths
+    # This would mean updating TN which are irrelevant for recall and precision
+    if preds.shape[0] == 0 and gt.shape[0] == 0:
+        ground_truths = torch.zeros([1, 1], dtype=torch.int, device=device)
+        predictions = torch.zeros([1, 1], device=device)
+        return ground_truths, predictions
+
+    # Any prediction made when no gt boxes are present is a false positive
+    if gt.shape[0] == 0:
+        ground_truths = torch.zeros(preds.shape[0], dtype=torch.int, device=device)
+        predictions = preds[:, 4]
+        return ground_truths, predictions
+
+    # No predictions made when gt boxes are present is a false negative
+    if preds.shape[0] == 0:
+        ground_truths = torch.ones(gt.shape[0], dtype=torch.int, device=device)
+        predictions = torch.zeros(gt.shape[0], device=device)
+        return ground_truths, predictions
+
+    iou_matrix = torchvision.ops.box_iou(gt, preds[:, :4])
+
+    results_dim = min(gt.shape[0], preds.shape[0])
+    recorded_matches = torch.empty(results_dim, 2, device=device)
+    preds_match_idices = []
+    for i in range(results_dim):
+        # Find best iou for each gt
+        best_match_iou_vec, best_match_pred_idx_vec  = iou_matrix.max(dim=1)
+
+        # Of these find which gt is best matched
+        best_match_iou_scalar = best_match_iou_vec.max()
+        best_match_gt_idx = best_match_iou_vec.argmax()
+        best_match_pred_idx = best_match_pred_idx_vec[best_match_gt_idx]
+
+        assert best_match_iou_scalar == iou_matrix[best_match_gt_idx, best_match_pred_idx]
+
+        # It has to be adjusted, because max overlap could be zero, but confidence score could be high
+        confidence_score = preds[best_match_pred_idx, 4] if best_match_iou_scalar > 0 else 0
+
+        # Record the match
+        recorded_matches[i, :] = torch.tensor([
+            1.0, # Ground truth
+            confidence_score
+        ], device=device)
+
+        # Record pred index of a match
+        preds_match_idices.append(best_match_pred_idx)
+
+        # Set the matched gt and pred to -1 so that they are not matched again
+        iou_matrix[best_match_gt_idx, :] = -1
+        iou_matrix[:, best_match_pred_idx] = -1
+
+    # Assert that there are no duplicate pred indices
+    assert len(preds_match_idices) == len(set(preds_match_idices))
+
+    if preds.shape[0] > gt.shape[0]:
+        padding_size = preds.shape[0] - gt.shape[0]
+        mask = torch.ones(preds.shape[0], dtype=torch.bool, device=device)
+        mask[preds_match_idices] = False
+        preds_without_matches = preds[mask, :]
+        confidence_scores_padding = preds_without_matches[:, 4]
+        assert confidence_scores_padding.shape[0] == padding_size
+        padding = torch.hstack([
+            torch.zeros(padding_size, 1, device=device),
+            confidence_scores_padding.unsqueeze(1)
+        ])
+        recorded_matches = torch.vstack([
+            recorded_matches,
+            padding
+        ])
+
+    elif preds.shape[0] < gt.shape[0]:
+        padding_size = gt.shape[0] - preds.shape[0]
+        padding = torch.hstack([
+            torch.ones(padding_size, 1, device=device),
+            torch.zeros(padding_size, 1, device=device)
+        ])
+        recorded_matches = torch.vstack([
+            recorded_matches,
+            padding
+        ])
+    ground_truths = recorded_matches[:, 0].type(torch.int)
+    predictions = recorded_matches[:, 1]
+    return ground_truths, predictions
+
+
+
 
 
 class PrecisionRecallMetricsCallback(TrainerCallback):
@@ -84,105 +191,24 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             batch[3],
         )
 
-        # Isolate single image for calculation of metrics, this way no mixing will occur
+        # Isolate single image for calculation of metrics, this way no image mixing will occur
         for batch_image_id, absolute_image_id in enumerate(image_ids):
+            # Get only xyxy boxes and scores from single image preds
             single_image_preds = preds[preds[:, 6] == absolute_image_id, :]
+            single_image_preds_boxes_scores = single_image_preds[:, :5]
+
+            # Get only xyxy boxes image gts
             single_image_gt = ground_truth_labels[ground_truth_labels[:, 0] == batch_image_id, :]
-            self.update_metrics(trainer, single_image_gt, single_image_preds, original_image_sizes)
+            single_image_gt_boxes = single_image_gt[:, 2:].clone()
+            single_image_gt_boxes = _yolo_to_xyxy(single_image_gt_boxes, original_image_sizes)
 
-
-    def update_metrics(self, trainer, ground_truth_labels, preds, original_image_sizes):
-        # TODO: wrap it in another function
-        # Denormalize and convert ncxncywh to xyxy
-        gt_boxes = ground_truth_labels[:, 2:].clone()
-        gt_boxes[:, [0, 2]] *= original_image_sizes[0, 1]
-        gt_boxes[:, [1, 3]] *= original_image_sizes[0, 0]
-        for i, row in enumerate(gt_boxes):
-            gt_boxes[i, :] = cxcywh_to_xyxy(row)
-
-        # No predictions and no ground truths
-        # This would mean updating TN which are irrelevant for recall and precision
-        if preds.shape[0] == 0 and gt_boxes.shape[0] == 0:
-            return
-
-        # Any prediction made when no gt boxes are present is a false positive
-        if gt_boxes.shape[0] == 0:
-            metric_input_gt = torch.zeros(preds.shape[0], dtype=torch.int, device=trainer.device)
-            metric_input_preds = preds[:, 4]
-            self.metrics.update(metric_input_preds, metric_input_gt)
-            return
-
-        # No predictions made when gt boxes are present is a false negative
-        if preds.shape[0] == 0:
-            metric_input_gt = torch.ones(gt_boxes.shape[0], dtype=torch.int, device=trainer.device)
-            metric_input_preds = torch.zeros(gt_boxes.shape[0], device=trainer.device)
-            self.metrics.update(metric_input_preds, metric_input_gt)
-            return
-
-        iou_matrix = torchvision.ops.box_iou(gt_boxes, preds[:, :4])
-
-        results_dim = min(gt_boxes.shape[0], preds.shape[0])
-        recorded_matches = torch.empty(results_dim, 2, device=trainer.device)
-        preds_match_idices = []
-        for i in range(results_dim):
-            # Find best iou for each gt
-            best_match_iou_vec, best_match_pred_idx_vec  = iou_matrix.max(dim=1)
-
-            # Of these find which gt is best matched
-            best_match_iou_scalar = best_match_iou_vec.max()
-            best_match_gt_idx = best_match_iou_vec.argmax()
-            best_match_pred_idx = best_match_pred_idx_vec[best_match_gt_idx]
-
-            assert best_match_iou_scalar == iou_matrix[best_match_gt_idx, best_match_pred_idx]
-
-            # It has to be adjusted, because max overlap could be zero, but confidence score could be high
-            confidence_score = preds[best_match_pred_idx, 4] if best_match_iou_scalar > 0 else 0
-
-            # Record the match
-            recorded_matches[i, :] = torch.tensor([
-                1.0, # Ground truth
-                confidence_score
-            ], device=trainer.device)
-
-            # Record pred index of a match
-            preds_match_idices.append(best_match_pred_idx)
-
-            # Set the matched gt and pred to -1 so that they are not matched again
-            iou_matrix[best_match_gt_idx, :] = -1
-            iou_matrix[:, best_match_pred_idx] = -1
-
-        # Assert that there are no duplicate pred indices
-        assert len(preds_match_idices) == len(set(preds_match_idices))
-
-        if preds.shape[0] > gt_boxes.shape[0]:
-            padding_size = preds.shape[0] - gt_boxes.shape[0]
-            mask = torch.ones(preds.shape[0], dtype=torch.bool, device=trainer.device)
-            mask[preds_match_idices] = False
-            preds_without_matches = preds[mask, :]
-            confidence_scores_padding = preds_without_matches[:, 4]
-            assert confidence_scores_padding.shape[0] == padding_size
-            padding = torch.hstack([
-                torch.zeros(padding_size, 1, device=trainer.device),
-                confidence_scores_padding.unsqueeze(1)
-            ])
-            recorded_matches = torch.vstack([
-                recorded_matches,
-                padding
-            ])
-
-        elif preds.shape[0] < gt_boxes.shape[0]:
-            padding_size = gt_boxes.shape[0] - preds.shape[0]
-            padding = torch.hstack([
-                torch.ones(padding_size, 1, device=trainer.device),
-                torch.zeros(padding_size, 1, device=trainer.device)
-            ])
-            recorded_matches = torch.vstack([
-                recorded_matches,
-                padding
-            ])
-        metric_input_gt = recorded_matches[:, 0].type(torch.int)
-        metric_input_preds = recorded_matches[:, 1]
-        self.metrics.update(metric_input_preds, metric_input_gt)
+            # Convert them to classification results for classification metrics calculation
+            classification_gt, classification_preds = _detection_results_to_classification_results(
+                single_image_gt_boxes,
+                single_image_preds_boxes_scores,
+                trainer.device
+            )
+            self.metrics.update(classification_preds, classification_gt)
 
 
     def on_eval_epoch_end(self, trainer, **kwargs):
@@ -241,11 +267,8 @@ class MeanAveragePrecisionCallback(TrainerCallback):
             # preds: [ xyxy, score, class_id, image_id ]
             single_image_preds = preds[preds[:, 6] == absolute_image_id, :]
             single_image_gt = ground_truth_labels[ground_truth_labels[:, 0] == batch_image_id, :].clone()
-            # Denormalize and convert ncxncywh to xyxy
-            single_image_gt[:, [2, 4]] *= original_image_sizes[0, 1]
-            single_image_gt[:, [3, 5]] *= original_image_sizes[0, 0]
-            for i, row in enumerate(single_image_gt):
-                single_image_gt[i, 2:] = cxcywh_to_xyxy(row[2:])
+            single_image_gt_boxes = single_image_gt[:, 2:].clone()
+            single_image_gt_boxes = _yolo_to_xyxy(single_image_gt_boxes, original_image_sizes)
 
             metric_input_preds.append(
                 {
@@ -256,7 +279,8 @@ class MeanAveragePrecisionCallback(TrainerCallback):
             )
             metric_input_gt.append(
                 {
-                    'boxes' : single_image_gt[:, 2:],
+                    # Copy of converted boxes
+                    'boxes' : single_image_gt_boxes,
                     'labels' : single_image_gt[:, 1]
                 }
             )
