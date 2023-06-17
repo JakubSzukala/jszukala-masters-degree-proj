@@ -31,7 +31,7 @@ from pytorch_accelerated.callbacks import (
 
 from functools import partial
 
-from model.metrics import PrecisionRecallMetricsCallback, MeanAveragePrecisionCallback
+from model.callbacks import PrecisionRecallMetricsCallback, MeanAveragePrecisionCallback
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to config file')
