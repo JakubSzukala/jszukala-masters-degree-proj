@@ -16,6 +16,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from pytorch_accelerated.callbacks import TrainerCallback
 
 from model.utils import yolo_to_xyxy, detection_results_to_classification_results
+from model.metrics import PrecisionCurve
 
 import numpy as np
 
@@ -26,6 +27,15 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         self.task = task
         self.num_classes = num_classes
         self.average = average
+        self.curve_metrics = MetricCollection(
+            {
+                'precision_curve' : PrecisionCurve(
+                    task=task,
+                    average=average,
+                    device=device
+                ).to(device),
+            }
+        )
         self.metrics = MetricCollection({
             'precision' : Precision(
                 task=task,
@@ -99,6 +109,8 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
                 trainer.device
             )
             self.metrics.update(classification_preds, classification_gt)
+            # TODO: Add a flag, update it only when inside evaluation run
+            self.curve_metrics.update(classification_preds, classification_gt)
 
 
     def on_eval_epoch_end(self, trainer, **kwargs):
@@ -112,6 +124,12 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         trainer.run_history.update_metric('f1', computed_metrics['f1'].cpu())
         trainer.run_history.update_metric('confusion_matrix', computed_metrics['confusion_matrix'].cpu())
         self.metrics.reset()
+
+        # TODO: Add a flag, update it only when inside evaluation run
+        thresholds, precisions = self.curve_metrics.compute()['precision_curve']
+        trainer.run_history.update_metric('precision_curve_thresholds', thresholds.cpu())
+        trainer.run_history.update_metric('precision_curve_precisions', precisions.cpu())
+        self.curve_metrics.reset()
 
 
 class MeanAveragePrecisionCallback(TrainerCallback):

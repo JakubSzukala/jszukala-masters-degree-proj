@@ -1,122 +1,86 @@
+from typing import Any
 import torch
 import torchvision
+from torchmetrics import Metric, Precision
 
 
-def yolo_to_xyxy(boxes, image_sizes):
+def get_binary_stat_scores(preds, targets, thresholds=None):
     """
-    Function that takes yolo format boxes and image sizes and returns
-    xyxy format boxes.
-
-    Note: this function modifies the boxes tensor.
-    """
-    def cxcywh_to_xyxy(box):
-        x, y, w, h = box
-        return torch.tensor([x - w / 2, y - h / 2, x + w / 2, y + h / 2])
-
-    # Denormalize
-    boxes[:, [0, 2]] *= image_sizes[0, 1]
-    boxes[:, [1, 3]] *= image_sizes[0, 0]
-
-    # Convert from denormalized yolo format to xyxy
-    for i, row in enumerate(boxes):
-        boxes[i, :] = cxcywh_to_xyxy(row)
-    return boxes
-
-
-def detection_results_to_classification_results(gt, preds, device):
-    """
-    Function that takes ground truths and preds, from detection model,
-    matches most likely prediction with ground truth and returns
-    tensors of ground truths and confidence scores of matches.
+    Calculates true positives, false positives, false negatives and true negatives
+    for binary classification task. Each of the scores will have the shape [N, 1]
+    where N is the number of thresholds.
 
     Args:
-        gt (torch.Tensor): Ground truths [ xyxy ]
-        preds (torch.Tensor): Predictions [ xyxy, score ]
-        device (str): Device to move tensors to
+        preds (torch.Tensor): Predictions of shape [N, 1]
+        targets (torch.Tensor): Targets of shape [N, 1]
+        thresholds (torch.Tensor): Thresholds to use for predictions
+
     Returns:
-        ground_truths (torch.Tensor): Ground truths
-        predictions (torch.Tensor): Confidence scores of matches
+        tp (torch.Tensor): True positives
+        fp (torch.Tensor): False positives
+        fn (torch.Tensor): False negatives
+        tn (torch.Tensor): True negatives
+        thresholds (torch.Tensor): Thresholds used for predictions
     """
-    # No predictions and no ground truths
-    # This would mean updating TN which are irrelevant for recall and precision
-    if preds.shape[0] == 0 and gt.shape[0] == 0:
-        ground_truths = torch.zeros([1, 1], dtype=torch.int, device=device)
-        predictions = torch.zeros([1, 1], device=device)
-        return ground_truths, predictions
 
-    # Any prediction made when no gt boxes are present is a false positive
-    if gt.shape[0] == 0:
-        ground_truths = torch.zeros(preds.shape[0], dtype=torch.int, device=device)
-        predictions = preds[:, 4]
-        return ground_truths, predictions
+    assert preds.shape == targets.shape
 
-    # No predictions made when gt boxes are present is a false negative
-    if preds.shape[0] == 0:
-        ground_truths = torch.ones(gt.shape[0], dtype=torch.int, device=device)
-        predictions = torch.zeros(gt.shape[0], device=device)
-        return ground_truths, predictions
+    if thresholds is None:
+        thresholds = torch.sort(torch.unique(preds)).values
+    print(f"Thresholds_n: {thresholds.shape[0]}")
+    # Prepare matrix where columns are targets and preds and
+    # these are stacked in dim=0 thresholds_n times
+    matrix = torch.hstack([targets, preds])
+    matrix = torch.stack([matrix] * len(thresholds), dim=0)
 
-    iou_matrix = torchvision.ops.box_iou(gt, preds[:, :4])
+    matrix = matrix >= thresholds.reshape(-1, 1, 1)
 
-    results_dim = min(gt.shape[0], preds.shape[0])
-    recorded_matches = torch.empty(results_dim, 2, device=device)
-    preds_match_idices = []
-    for i in range(results_dim):
-        # Find best iou for each gt
-        best_match_iou_vec, best_match_pred_idx_vec  = iou_matrix.max(dim=1)
+    #      TARGETS            PREDICTIONS         TARGETS
+    tp = ((matrix[:, :, 0] == matrix[:, :, 1]) & (matrix[:, :, 0] == 1)).sum(dim=1).reshape(-1, 1)
+    fp = ((matrix[:, :, 0] != matrix[:, :, 1]) & (matrix[:, :, 0] == 0)).sum(dim=1).reshape(-1, 1)
+    fn = ((matrix[:, :, 0] != matrix[:, :, 1]) & (matrix[:, :, 0] == 1)).sum(dim=1).reshape(-1, 1)
+    tn = ((matrix[:, :, 0] == matrix[:, :, 1]) & (matrix[:, :, 0] == 0)).sum(dim=1).reshape(-1, 1)
 
-        # Of these find which gt is best matched
-        best_match_iou_scalar = best_match_iou_vec.max()
-        best_match_gt_idx = best_match_iou_vec.argmax()
-        best_match_pred_idx = best_match_pred_idx_vec[best_match_gt_idx]
+    return tp, fp, fn, tn, thresholds
 
-        assert best_match_iou_scalar == iou_matrix[best_match_gt_idx, best_match_pred_idx]
 
-        # It has to be adjusted, because max overlap could be zero, but confidence score could be high
-        confidence_score = preds[best_match_pred_idx, 4] if best_match_iou_scalar > 0 else 0
+class PrecisionCurve(Metric):
+    def __init__(self, task='binary', average='macro', device='cuda:0', thresholds=None):
+        super().__init__()
+        self.task = task
+        self.average = average
+        self.dev = device
+        self.thresholds = thresholds
 
-        # Record the match
-        recorded_matches[i, :] = torch.tensor([
-            1.0, # Ground truth
-            confidence_score
-        ], device=device)
+        # Default for cooncatenation, equal to TN which do not
+        # affect precision
+        self.add_state(
+            "preds",
+            default=torch.zeros([1, 1], device=self.dev),
+        )
+        self.add_state(
+            "targets",
+            default=torch.zeros([1, 1], device=self.dev),
+        )
 
-        # Record pred index of a match
-        preds_match_idices.append(best_match_pred_idx)
 
-        # Set the matched gt and pred to -1 so that they are not matched again
-        iou_matrix[best_match_gt_idx, :] = -1
-        iou_matrix[:, best_match_pred_idx] = -1
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        assert preds.shape == targets.shape
+        self.preds = torch.cat([self.preds, preds.reshape(-1, 1)])
+        self.targets = torch.cat([self.targets, targets.reshape(-1, 1)])
 
-    # Assert that there are no duplicate pred indices
-    assert len(preds_match_idices) == len(set(preds_match_idices))
 
-    if preds.shape[0] > gt.shape[0]:
-        padding_size = preds.shape[0] - gt.shape[0]
-        mask = torch.ones(preds.shape[0], dtype=torch.bool, device=device)
-        mask[preds_match_idices] = False
-        preds_without_matches = preds[mask, :]
-        confidence_scores_padding = preds_without_matches[:, 4]
-        assert confidence_scores_padding.shape[0] == padding_size
-        padding = torch.hstack([
-            torch.zeros(padding_size, 1, device=device),
-            confidence_scores_padding.unsqueeze(1)
-        ])
-        recorded_matches = torch.vstack([
-            recorded_matches,
-            padding
-        ])
+    def compute(self):
+        if self.thresholds is None:
+            thresholds = torch.sort(torch.unique(self.preds)).values
 
-    elif preds.shape[0] < gt.shape[0]:
-        padding_size = gt.shape[0] - preds.shape[0]
-        padding = torch.hstack([
-            torch.ones(padding_size, 1, device=device),
-            torch.zeros(padding_size, 1, device=device)
-        ])
-        recorded_matches = torch.vstack([
-            recorded_matches,
-            padding
-        ])
-    ground_truths = recorded_matches[:, 0].type(torch.int)
-    predictions = recorded_matches[:, 1]
-    return ground_truths, predictions
+        # TODO: Remove its for testing
+        thresholds = torch.linspace(0, 1, 11).to(self.dev)
+        tp, fp, _, _, thresholds = get_binary_stat_scores(self.preds, self.targets, thresholds)
+        precisions = tp / (tp + fp)
+
+        # TODO: Remove its for testing
+        tested_th_idx = 7
+        print(f"Precision for theshold: {thresholds[tested_th_idx]} : {precisions[tested_th_idx]}")
+        print(f"Ground truth from torchmetrics.Precision: {Precision(task='binary', average='macro', threshold=float(thresholds[tested_th_idx])).to(self.dev)(self.preds, self.targets)}")
+        return thresholds, precisions
