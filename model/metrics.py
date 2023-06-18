@@ -73,3 +73,37 @@ class PrecisionCurve(Metric):
         precisions = torch.nan_to_num(precisions)
 
         return thresholds, precisions
+
+
+class RecallCurve(Metric):
+    def __init__(self, thresholds=None):
+        super().__init__()
+        self.thresholds = thresholds
+
+        # Default for concatenation to work, equal to TN which does not
+        # affect precision
+        self.add_state(
+            "preds",
+            default=torch.zeros([1, 1], device=self.device),
+        )
+        self.add_state(
+            "targets",
+            default=torch.zeros([1, 1], device=self.device),
+        )
+
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        assert preds.shape == targets.shape
+        self.preds   = torch.cat([self.preds, preds.reshape(-1, 1)])
+        self.targets = torch.cat([self.targets, targets.reshape(-1, 1)])
+
+
+    def compute(self):
+        if self.thresholds is None:
+            self.thresholds = torch.sort(torch.unique(self.preds)).values
+
+        tp, _, fn, _, thresholds = get_binary_stat_scores(self.preds, self.targets, self.thresholds)
+        recalls = tp / (tp + fn)
+        recalls = torch.nan_to_num(recalls)
+
+        return thresholds, recalls

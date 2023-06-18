@@ -140,11 +140,6 @@ trainer = Yolov7Trainer(
             confidence_threshold=confidence_threshold
         ),
         MeanAveragePrecisionCallback(np.linspace(0.5, 0.75, 6).tolist()),
-        #PrecisionRecallCurveMetricsCallback(
-            #task='binary',
-            #num_classes=1,
-            #average='macro'
-        #),
         *get_default_callbacks(progress_bar=True),
     ],
 )
@@ -174,15 +169,34 @@ trainer.evaluate(
     collate_fn=yolov7_collate_fn
 )
 
+# Retrieve metrics
 pr_curve_precision = trainer.run_history.get_latest_metric('pr_curve_precision')
 pr_curve_recall = trainer.run_history.get_latest_metric('pr_curve_recall')
 pr_curve_thresholds = trainer.run_history.get_latest_metric('pr_curve_thresholds')
+precision_curve_precisions = trainer.run_history.get_latest_metric('precision_curve_precisions')
+precision_curve_thresholds = trainer.run_history.get_latest_metric('precision_curve_thresholds')
+recall_curve_recalls = trainer.run_history.get_latest_metric('recall_curve_recalls')
+recall_curve_thresholds = trainer.run_history.get_latest_metric('recall_curve_thresholds')
 
-fig, ax = plt.subplots(2)
+fig, ax = plt.subplots(4)
+ax[0].set_title('Precision-Recall curve')
 ax[0].plot(pr_curve_recall, pr_curve_precision)
 ax[0].set_xlabel('Recall')
 ax[0].set_ylabel('Precision')
-ax[0].set_title('Precision-Recall curve')
+
+ax[1].set_title('Confidence Thresholds')
 ax[1].plot(pr_curve_thresholds.flip(0))
-ax[1].set_xlabel('Confidence Thresholds')
+ax[1].set_xlabel('Index')
+ax[1].set_ylabel('Confidence')
+
+ax[2].set_title('Precision curve')
+ax[2].plot(precision_curve_thresholds, precision_curve_precisions)
+ax[2].set_xlabel('Confidence')
+ax[2].set_ylabel('Precision')
+
+ax[3].set_title('Recall curve')
+ax[3].plot(recall_curve_thresholds, recall_curve_recalls)
+ax[3].set_xlabel('Confidence')
+ax[3].set_ylabel('Recall')
+
 plt.show()

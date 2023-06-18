@@ -1,3 +1,4 @@
+from enum import Enum
 import sys
 import torch
 import torchvision
@@ -16,9 +17,13 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from pytorch_accelerated.callbacks import TrainerCallback
 
 from model.utils import yolo_to_xyxy, detection_results_to_classification_results
-from model.metrics import PrecisionCurve
+from model.metrics import PrecisionCurve, RecallCurve
 
 import numpy as np
+
+class RunType(Enum):
+    TRAINING = 0
+    EVALUATION = 1
 
 
 class PrecisionRecallMetricsCallback(TrainerCallback):
@@ -27,11 +32,15 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         self.task = task
         self.num_classes = num_classes
         self.average = average
+        self.run_type = None
         self.curve_metrics = MetricCollection(
             {
                 'precision_curve' : PrecisionCurve(
                     thresholds=torch.linspace(0, 1, 101, device=device),
                 ).to(device),
+                'recall_curve' : RecallCurve(
+                    thresholds=torch.linspace(0, 1, 101, device=device),
+                ).to(device)
             }
         )
         self.metrics = MetricCollection({
@@ -66,15 +75,18 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             ).to(device),
         })
 
+
     def _move_to_device(self, trainer):
         self.metrics.to(trainer.device)
 
 
     def on_training_run_start(self, trainer, **kwargs):
+        self.run_type = RunType.TRAINING
         self._move_to_device(trainer)
 
 
     def on_evaluation_run_start(self, trainer, **kwargs):
+        self.run_type = RunType.EVALUATION
         self._move_to_device(trainer)
 
 
@@ -107,8 +119,9 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
                 trainer.device
             )
             self.metrics.update(classification_preds, classification_gt)
-            # TODO: Add a flag, update it only when inside evaluation run
-            self.curve_metrics.update(classification_preds, classification_gt)
+
+            if self.run_type == RunType.EVALUATION:
+                self.curve_metrics.update(classification_preds, classification_gt)
 
 
     def on_eval_epoch_end(self, trainer, **kwargs):
@@ -123,12 +136,21 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         trainer.run_history.update_metric('confusion_matrix', computed_metrics['confusion_matrix'].cpu())
         self.metrics.reset()
 
-        # TODO: Add a flag, update it only when inside evaluation run
-        thresholds, precisions = self.curve_metrics.compute()['precision_curve']
-        trainer.run_history.update_metric('precision_curve_thresholds', thresholds.cpu())
-        trainer.run_history.update_metric('precision_curve_precisions', precisions.cpu())
-        self.curve_metrics.reset()
+        if self.run_type == RunType.EVALUATION:
+            thresholds, precisions = self.curve_metrics.compute()['precision_curve']
+            trainer.run_history.update_metric('precision_curve_thresholds', thresholds.cpu())
+            trainer.run_history.update_metric('precision_curve_precisions', precisions.cpu())
+            thresholds, recalls = self.curve_metrics.compute()['recall_curve']
+            trainer.run_history.update_metric('recall_curve_thresholds', thresholds.cpu())
+            trainer.run_history.update_metric('recall_curve_recalls', recalls.cpu())
+            self.curve_metrics.reset()
 
+
+    def on_training_run_end(self, trainer, **kwargs):
+        self.run_type = None
+
+    def on_evaluation_run_end(self, trainer, **kwargs):
+        self.run_type = None
 
 class MeanAveragePrecisionCallback(TrainerCallback):
     def __init__(self, iou_thresholds=None):
