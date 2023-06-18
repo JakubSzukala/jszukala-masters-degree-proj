@@ -72,7 +72,7 @@ class PrecisionCurve(Metric):
         precisions = tp / (tp + fp)
         precisions = torch.nan_to_num(precisions)
 
-        return thresholds, precisions
+        return thresholds.squeeze(), precisions.squeeze()
 
 
 class RecallCurve(Metric):
@@ -106,7 +106,7 @@ class RecallCurve(Metric):
         recalls = tp / (tp + fn)
         recalls = torch.nan_to_num(recalls)
 
-        return thresholds, recalls
+        return thresholds.squeeze(), recalls.squeeze()
 
 
 class F1Curve(Metric):
@@ -142,4 +142,4 @@ class F1Curve(Metric):
         f1s = 2 * (precisions * recalls) / (precisions + recalls)
         f1s = torch.nan_to_num(f1s)
 
-        return thresholds, f1s
+        return thresholds.squeeze(), f1s.squeeze()
