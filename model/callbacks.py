@@ -17,7 +17,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from pytorch_accelerated.callbacks import TrainerCallback
 
 from model.utils import yolo_to_xyxy, detection_results_to_classification_results
-from model.metrics import PrecisionCurve, RecallCurve
+from model.metrics import PrecisionCurve, RecallCurve, F1Curve
 
 import numpy as np
 
@@ -39,6 +39,9 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
                     thresholds=torch.linspace(0, 1, 101, device=device),
                 ).to(device),
                 'recall_curve' : RecallCurve(
+                    thresholds=torch.linspace(0, 1, 101, device=device),
+                ).to(device),
+                'f1_curve' : F1Curve(
                     thresholds=torch.linspace(0, 1, 101, device=device),
                 ).to(device)
             }
@@ -143,6 +146,9 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
             thresholds, recalls = self.curve_metrics.compute()['recall_curve']
             trainer.run_history.update_metric('recall_curve_thresholds', thresholds.cpu())
             trainer.run_history.update_metric('recall_curve_recalls', recalls.cpu())
+            thresholds, f1s = self.curve_metrics.compute()['f1_curve']
+            trainer.run_history.update_metric('f1_curve_thresholds', thresholds.cpu())
+            trainer.run_history.update_metric('f1_curve_f1s', f1s.cpu())
             self.curve_metrics.reset()
 
 

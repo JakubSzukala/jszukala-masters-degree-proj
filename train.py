@@ -177,8 +177,10 @@ precision_curve_precisions = trainer.run_history.get_latest_metric('precision_cu
 precision_curve_thresholds = trainer.run_history.get_latest_metric('precision_curve_thresholds')
 recall_curve_recalls = trainer.run_history.get_latest_metric('recall_curve_recalls')
 recall_curve_thresholds = trainer.run_history.get_latest_metric('recall_curve_thresholds')
+f1_curve_f1s = trainer.run_history.get_latest_metric('f1_curve_f1s')
+f1_curve_thresholds = trainer.run_history.get_latest_metric('f1_curve_thresholds')
 
-fig, ax = plt.subplots(4)
+fig, ax = plt.subplots(5)
 ax[0].set_title('Precision-Recall curve')
 ax[0].plot(pr_curve_recall, pr_curve_precision)
 ax[0].set_xlabel('Recall')
@@ -198,5 +200,10 @@ ax[3].set_title('Recall curve')
 ax[3].plot(recall_curve_thresholds, recall_curve_recalls)
 ax[3].set_xlabel('Confidence')
 ax[3].set_ylabel('Recall')
+
+ax[4].set_title('F1 curve')
+ax[4].plot(f1_curve_thresholds, f1_curve_f1s)
+ax[4].set_xlabel('Confidence')
+ax[4].set_ylabel('F1')
 
 plt.show()
