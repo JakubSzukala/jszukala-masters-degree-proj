@@ -30,9 +30,7 @@ class PrecisionRecallMetricsCallback(TrainerCallback):
         self.curve_metrics = MetricCollection(
             {
                 'precision_curve' : PrecisionCurve(
-                    task=task,
-                    average=average,
-                    device=device
+                    thresholds=torch.linspace(0, 1, 101, device=device),
                 ).to(device),
             }
         )
