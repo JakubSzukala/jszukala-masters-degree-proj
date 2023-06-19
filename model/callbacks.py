@@ -71,8 +71,6 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
         })
 
 
-    def _move_to_device(self, trainer):
-        self.one_shot_metrics.to(trainer.device)
 
 
     def _update_history(self, trainer, computed_metrics_collection):
@@ -87,12 +85,13 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
 
     def on_training_run_start(self, trainer, **kwargs):
         self.run_type = RunType.TRAINING
-        self._move_to_device(trainer)
+        self.one_shot_metrics.to(trainer.device)
 
 
     def on_evaluation_run_start(self, trainer, **kwargs):
         self.run_type = RunType.EVALUATION
-        self._move_to_device(trainer)
+        self.one_shot_metrics.to(trainer.device)
+        self.series_metrics.to(trainer.device)
 
 
     def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
