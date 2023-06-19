@@ -200,4 +200,5 @@ ax[4].plot(pr_curve_thresholds, f1_curve)
 ax[4].set_xlabel('Confidence')
 ax[4].set_ylabel('F1')
 
+plt.savefig('figure.png')
 plt.show()
