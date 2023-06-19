@@ -33,10 +33,7 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
         self.run_type = None
         self.metrics_returns_lookup = {
             # Metric             returns
-            'precision_curve' :  ['precision_curve_precisions', 'precision_curve_thresholds'],
-            'recall_curve' :     ['recall_curve_recalls', 'recall_curve_thresholds'],
             'pr_curve' :         ['pr_curve_precision', 'pr_curve_recall', 'pr_curve_thresholds'],
-            'f1_curve' :         ['f1_curve_f1s', 'f1_curve_thresholds'],
             'confusion_matrix' : ['confusion_matrix'],
             'precision' :        ['precision'],
             'recall' :           ['recall'],
@@ -44,18 +41,9 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
         }
         self.series_metrics = MetricCollection(
             {
-                'precision_curve' : PrecisionCurve(
-                    thresholds=torch.linspace(0, 1, 101, device=device),
-                ).to(device),
-                'recall_curve' : RecallCurve(
-                    thresholds=torch.linspace(0, 1, 101, device=device),
-                ).to(device),
                 'pr_curve' : PrecisionRecallCurve(
                     task='binary',
                     average=average
-                ).to(device),
-                'f1_curve' : F1Curve(
-                    thresholds=torch.linspace(0, 1, 101, device=device),
                 ).to(device),
                 'confusion_matrix' : ConfusionMatrix(
                     task='binary',
