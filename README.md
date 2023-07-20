@@ -6,6 +6,10 @@ PUT masters degree project. Work in progress.
 #### Current state of the project
 Currently I was able to quite successfully train stock YOLOv7 networks to perform the task. Current work is focused on custom implementation of YOLOv7 that allows for far greater flexibility and my intention is to use this flexibility to gain an edge over the stock YOLOv7 results with techniques like image augmentation and pseudo labelling.
 
+Below are presented results from stock YOLOv7:
+![results_yolov7](img/results_stock_yolov7.png)
+![results_yolov7_preds](img/test_batch2_pred_stock_yolov7.jpg)
+
 #### TODOS
 Very general list of TODOs:
 - [x] Perform data exploration
