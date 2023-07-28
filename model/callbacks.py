@@ -76,7 +76,7 @@ class DetectionLossTrackerCallback(TrainerCallback):
         Update train loss series with average loss for epoch and reset loss trackers.
         """
         for loss_name, loss_tracker in self.train_loss.items():
-            self.trainer.update_metric(f'train_{loss_name}', loss_tracker.average)
+            trainer.run_history.update_metric(f'train_{loss_name}', loss_tracker.average)
             loss_tracker.reset()
 
 
@@ -85,7 +85,7 @@ class DetectionLossTrackerCallback(TrainerCallback):
         Update eval loss series with average loss for epoch and reset loss trackers.
         """
         for loss_name, loss_tracker in self.eval_loss.items():
-            self.trainer.update_metric(f'eval_{loss_name}', loss_tracker.average)
+            trainer.run_history.update_metric(f'eval_{loss_name}', loss_tracker.average)
             loss_tracker.reset()
 
 
