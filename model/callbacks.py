@@ -26,6 +26,9 @@ class RunType(Enum):
 
 
 class DetectionLossTrackerCallback(TrainerCallback):
+    """
+    Callback class used for tracking loss values for detection model.
+    """
     def __init__(self):
         self.train_loss = {
             'box_loss' : LossTracker(),
@@ -52,10 +55,12 @@ class DetectionLossTrackerCallback(TrainerCallback):
 
 
     def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
+        """
+        Update corresponding loss trackers with loss for eval step. batch_output_items_scaled
+        is scaled by batch size to mimic final loss calculation in yolov7's loss.py.
+        """
         batch_size = batch[0].shape[0]
 
-        # This weird stuff mimics final loss calculation in yolov7's loss.py / _aggregate_losses
-        # Which is executed before updating loss tracker
         batch_output_items_scaled = batch_output['loss_items'] * batch_size
 
         self.eval_loss['box_loss'].update(batch_output_items_scaled[0], batch_size)
@@ -64,10 +69,12 @@ class DetectionLossTrackerCallback(TrainerCallback):
 
 
     def on_train_step_end(self, trainer, batch, batch_output, **kwargs):
+        """
+        Update corresponding loss trackers with loss for train step. batch_output_items_scaled
+        is scaled by batch size to mimic final loss calculation in yolov7's loss.py.
+        """
         batch_size = batch[0].shape[0]
 
-        # This weird stuff mimics final loss calculation in yolov7's loss.py / _aggregate_losses
-        # Which is executed before updating loss tracker
         batch_output_items_scaled = batch_output['loss_items'] * batch_size
 
         self.train_loss['box_loss'].update(batch_output_items_scaled[0], batch_size)
@@ -76,15 +83,23 @@ class DetectionLossTrackerCallback(TrainerCallback):
 
 
     def on_train_epoch_end(self, trainer, **kwargs):
+        """
+        Update train loss series with average loss for epoch and reset loss trackers.
+        """
         for loss_name, loss_tracker in self.train_loss.items():
             self.train_loss_series[loss_name].append(self.train_loss[loss_name].average)
             loss_tracker.reset()
 
 
     def on_eval_epoch_end(self, trainer, **kwargs):
+        """
+        Update eval loss series with average loss for epoch and reset loss trackers.
+        """
         for loss_name, loss_tracker in self.eval_loss.items():
             self.eval_loss_series[loss_name].append(self.eval_loss[loss_name].average)
             loss_tracker.reset()
+
+
 
 
 class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
