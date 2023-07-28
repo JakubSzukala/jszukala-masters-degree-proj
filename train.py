@@ -31,7 +31,7 @@ from pytorch_accelerated.callbacks import (
 
 from functools import partial
 
-from model.callbacks import BinaryPrecisionRecallMetricsCallback, MeanAveragePrecisionCallback
+from model.callbacks import BinaryPrecisionRecallMetricsCallback, MeanAveragePrecisionCallback, DetectionLossTrackerCallback
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to config file')
@@ -138,7 +138,8 @@ trainer = Yolov7Trainer(
             confidence_threshold=confidence_threshold
         ),
         MeanAveragePrecisionCallback(np.linspace(0.5, 0.75, 6).tolist()),
-        *get_default_callbacks(progress_bar=True),
+        DetectionLossTrackerCallback(),
+        *get_default_callbacks(progress_bar=True)
     ],
 )
 
@@ -173,6 +174,7 @@ pr_curve_recall = trainer.run_history.get_latest_metric('pr_curve_recall')
 pr_curve_thresholds = trainer.run_history.get_latest_metric('pr_curve_thresholds')
 pr_curve_thresholds = torch.cat([torch.tensor([0.0]), pr_curve_thresholds])
 f1_curve = 2 * (pr_curve_precision * pr_curve_recall) / (pr_curve_precision + pr_curve_recall)
+print(trainer.run_history.get_metric_names())
 
 fig, ax = plt.subplots(5)
 ax[0].set_title('Precision-Recall curve')
