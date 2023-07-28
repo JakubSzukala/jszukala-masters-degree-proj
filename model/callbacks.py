@@ -16,14 +16,75 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 from pytorch_accelerated.callbacks import TrainerCallback
 
-from model.utils import yolo_to_xyxy, detection_results_to_classification_results
-from model.metrics import PrecisionCurve, RecallCurve, F1Curve
+from model.utils import yolo_to_xyxy, detection_results_to_classification_results, LossTracker
 
 import numpy as np
 
 class RunType(Enum):
     TRAINING = 0
     EVALUATION = 1
+
+
+class DetectionLossTrackerCallback(TrainerCallback):
+    def __init__(self):
+        self.train_loss = {
+            'box_loss' : LossTracker(),
+            'obj_loss' : LossTracker(),
+            'cls_loss' : LossTracker(),
+        }
+        # Store loss values for each epoch in the run
+        self.train_loss_series = {
+            'box_loss' : [],
+            'obj_loss' : [],
+            'cls_loss' : [],
+        }
+
+        self.eval_loss = {
+            'box_loss' : LossTracker(),
+            'obj_loss' : LossTracker(),
+            'cls_loss' : LossTracker(),
+        }
+        self.eval_loss_series = {
+            'box_loss' : [],
+            'obj_loss' : [],
+            'cls_loss' : [],
+        }
+
+
+    def on_eval_step_end(self, trainer, batch, batch_output, **kwargs):
+        batch_size = batch[0].shape[0]
+
+        # This weird stuff mimics final loss calculation in yolov7's loss.py / _aggregate_losses
+        # Which is executed before updating loss tracker
+        batch_output_items_scaled = batch_output['loss_items'] * batch_size
+
+        self.eval_loss['box_loss'].update(batch_output_items_scaled[0], batch_size)
+        self.eval_loss['obj_loss'].update(batch_output_items_scaled[1], batch_size)
+        self.eval_loss['cls_loss'].update(batch_output_items_scaled[2], batch_size)
+
+
+    def on_train_step_end(self, trainer, batch, batch_output, **kwargs):
+        batch_size = batch[0].shape[0]
+
+        # This weird stuff mimics final loss calculation in yolov7's loss.py / _aggregate_losses
+        # Which is executed before updating loss tracker
+        batch_output_items_scaled = batch_output['loss_items'] * batch_size
+
+        self.train_loss['box_loss'].update(batch_output_items_scaled[0], batch_size)
+        self.train_loss['obj_loss'].update(batch_output_items_scaled[1], batch_size)
+        self.train_loss['cls_loss'].update(batch_output_items_scaled[2], batch_size)
+
+
+    def on_train_epoch_end(self, trainer, **kwargs):
+        for loss_name, loss_tracker in self.train_loss.items():
+            self.train_loss_series[loss_name].append(self.train_loss[loss_name].average)
+            loss_tracker.reset()
+
+
+    def on_eval_epoch_end(self, trainer, **kwargs):
+        for loss_name, loss_tracker in self.eval_loss.items():
+            self.eval_loss_series[loss_name].append(self.eval_loss[loss_name].average)
+            loss_tracker.reset()
 
 
 class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
@@ -71,12 +132,10 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
         })
 
 
-
-
     def _update_history(self, trainer, computed_metrics_collection):
         for metric_name, metric in computed_metrics_collection.items():
             metric_returns_names = self.metrics_returns_lookup[metric_name]
-            if len(metric_returns_names) == 1:
+            if len(metric_returns_names) == 1: # TODO: This if is not necessary, loop is enough
                 trainer.run_history.update_metric(metric_returns_names[0], metric.cpu())
             else:
                 for i, metric_output in enumerate(metric_returns_names):
@@ -104,6 +163,9 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
+        print(f"batch size: {images.shape[0]}")
+        print(f"batch output losses: {batch_output['loss_items']}")
+        print(f"batch output loss: {batch_output['loss']}")
 
         # Isolate single image for calculation of metrics, this way no image mixing will occur
         for batch_image_id, absolute_image_id in enumerate(image_ids):
