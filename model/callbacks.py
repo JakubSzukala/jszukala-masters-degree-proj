@@ -100,6 +100,14 @@ class DetectionLossTrackerCallback(TrainerCallback):
             loss_tracker.reset()
 
 
+    def on_training_run_end(self, trainer, **kwargs):
+        """
+        Update run history with loss values for each epoch.
+        """
+        for loss_name, loss_series in self.train_loss_series.items():
+            trainer.run_history.update_metric(f'train_{loss_name}', loss_series)
+        for loss_name, loss_series in self.eval_loss_series.items():
+            trainer.run_history.update_metric(f'eval_{loss_name}', loss_series)
 
 
 class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
