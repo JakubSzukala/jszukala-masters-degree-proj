@@ -35,22 +35,11 @@ class DetectionLossTrackerCallback(TrainerCallback):
             'obj_loss' : LossTracker(),
             'cls_loss' : LossTracker(),
         }
-        # Store loss values for each epoch in the run
-        self.train_loss_series = {
-            'box_loss' : [],
-            'obj_loss' : [],
-            'cls_loss' : [],
-        }
 
         self.eval_loss = {
             'box_loss' : LossTracker(),
             'obj_loss' : LossTracker(),
             'cls_loss' : LossTracker(),
-        }
-        self.eval_loss_series = {
-            'box_loss' : [],
-            'obj_loss' : [],
-            'cls_loss' : [],
         }
 
 
@@ -87,7 +76,7 @@ class DetectionLossTrackerCallback(TrainerCallback):
         Update train loss series with average loss for epoch and reset loss trackers.
         """
         for loss_name, loss_tracker in self.train_loss.items():
-            self.train_loss_series[loss_name].append(self.train_loss[loss_name].average)
+            self.trainer.update_metric(f'train_{loss_name}', loss_tracker.average)
             loss_tracker.reset()
 
 
@@ -96,18 +85,8 @@ class DetectionLossTrackerCallback(TrainerCallback):
         Update eval loss series with average loss for epoch and reset loss trackers.
         """
         for loss_name, loss_tracker in self.eval_loss.items():
-            self.eval_loss_series[loss_name].append(self.eval_loss[loss_name].average)
+            self.trainer.update_metric(f'eval_{loss_name}', loss_tracker.average)
             loss_tracker.reset()
-
-
-    def on_training_run_end(self, trainer, **kwargs):
-        """
-        Update run history with loss values for each epoch.
-        """
-        for loss_name, loss_series in self.train_loss_series.items():
-            trainer.run_history.update_metric(f'train_{loss_name}', loss_series)
-        for loss_name, loss_series in self.eval_loss_series.items():
-            trainer.run_history.update_metric(f'eval_{loss_name}', loss_series)
 
 
 class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
