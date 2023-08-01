@@ -9,6 +9,7 @@ import torch
 import os
 import yaml
 import argparse
+import datetime
 
 from data.adapter import load_gwhd_df
 from data.adapter import GwhdToYoloAdapter
@@ -31,7 +32,30 @@ from pytorch_accelerated.callbacks import (
 
 from functools import partial
 
-from model.callbacks import BinaryPrecisionRecallMetricsCallback, MeanAveragePrecisionCallback, DetectionLossTrackerCallback
+from model.callbacks import (
+    BinaryPrecisionRecallMetricsCallback,
+    MeanAveragePrecisionCallback,
+    DetectionLossTrackerCallback,
+    TensorboardLoggingCallback
+)
+
+
+def create_log_directory(log_dir):
+    """
+    Function that creates log directory if it does not exist and encodes it with current date and time.
+
+    Args:
+        log_dir (str): Path to log directory
+    """
+    current_datetime = datetime.datetime.now()
+    current_datetime_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    if not os.path.exists(log_dir):
+        time_encoded_log_dir = log_dir + current_datetime_str
+        os.makedirs(time_encoded_log_dir)
+        return time_encoded_log_dir
+    else:
+        raise Exception("Log directory already exists!")
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to config file')
@@ -107,6 +131,9 @@ greater_is_better_sbm = config['trainer_params']['save_best_model_callback_param
 torch.manual_seed(0)
 np.random.seed(0)
 
+# Create unique per run time encoded log directory
+time_encoded_log_dir = create_log_directory(config['log_dir'])
+
 # Create trainer and train
 trainer = Yolov7Trainer(
     model=model,
@@ -139,6 +166,7 @@ trainer = Yolov7Trainer(
         ),
         MeanAveragePrecisionCallback(np.linspace(0.5, 0.75, 6).tolist()),
         DetectionLossTrackerCallback(),
+        TensorboardLoggingCallback(time_encoded_log_dir),
         *get_default_callbacks(progress_bar=True)
     ],
 )

@@ -1,7 +1,10 @@
+from abc import ABCMeta
 from enum import Enum
 import sys
+from typing import Any
 import torch
 import torchvision
+from torch.utils.tensorboard import SummaryWriter
 
 from torchmetrics import (
     MetricCollection,
@@ -14,15 +17,38 @@ from torchmetrics import (
 
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
-from pytorch_accelerated.callbacks import TrainerCallback
+from pytorch_accelerated.callbacks import TrainerCallback, LogMetricsCallback
 
-from model.utils import yolo_to_xyxy, detection_results_to_classification_results, LossTracker
+from model.utils import is_scalar, yolo_to_xyxy, detection_results_to_classification_results, LossTracker
 
 import numpy as np
 
 class RunType(Enum):
     TRAINING = 0
     EVALUATION = 1
+
+
+class TensorboardLoggingCallback(LogMetricsCallback):
+    def __init__(self, log_dir):
+        super().__init__()
+        self.writer = SummaryWriter(log_dir=log_dir)
+
+
+    def log_metrics(self, trainer, metrics: dict):
+        """
+        Overrridden function that will both log to console and to tensorboard.
+        It will only log scalars, one at a time.
+        """
+        for metric_name, metric_value in metrics.items():
+            if 'train' in metric_name:
+                prefix = 'train'
+            elif 'eval' in metric_name:
+                prefix = 'eval'
+            else:
+                prefix = 'metric'
+            trainer.print(f"\n{metric_name}: {metric_value}")
+            if is_scalar(metric_value):
+                self.writer.add_scalar(prefix + '/' + metric_name, metric_value, trainer.run_history.current_epoch)
 
 
 class DetectionLossTrackerCallback(TrainerCallback):
@@ -165,9 +191,6 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
             batch[2],
             batch[3],
         )
-        print(f"batch size: {images.shape[0]}")
-        print(f"batch output losses: {batch_output['loss_items']}")
-        print(f"batch output loss: {batch_output['loss']}")
 
         # Isolate single image for calculation of metrics, this way no image mixing will occur
         for batch_image_id, absolute_image_id in enumerate(image_ids):
@@ -211,6 +234,7 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
 
     def on_evaluation_run_end(self, trainer, **kwargs):
         self.run_type = None
+
 
 class MeanAveragePrecisionCallback(TrainerCallback):
     def __init__(self, iou_thresholds=None):
