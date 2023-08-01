@@ -161,7 +161,6 @@ trainer = Yolov7Trainer(
             #early_stopping_threshold=early_stopping_threshold,
         #),
         BinaryPrecisionRecallMetricsCallback(
-            average='macro',
             confidence_threshold=confidence_threshold
         ),
         MeanAveragePrecisionCallback(np.linspace(0.5, 0.75, 6).tolist()),

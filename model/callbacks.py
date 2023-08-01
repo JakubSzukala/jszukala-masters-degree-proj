@@ -116,9 +116,8 @@ class DetectionLossTrackerCallback(TrainerCallback):
 
 
 class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
-    def __init__(self, average='macro', device='cuda:0', confidence_threshold=0.4):
+    def __init__(self, device='cuda:0', confidence_threshold=0.4):
         super().__init__()
-        self.average = average
         self.run_type = None
         self.metrics_returns_lookup = {
             # Metric             returns
@@ -132,11 +131,9 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
             {
                 'pr_curve' : PrecisionRecallCurve(
                     task='binary',
-                    average=average
                 ).to(device),
                 'confusion_matrix' : ConfusionMatrix(
                     task='binary',
-                    average=average,
                     threshold=confidence_threshold
                 ).to(device),
             }
@@ -144,17 +141,14 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
         self.one_shot_metrics = MetricCollection({
             'precision' : Precision(
                 task='binary',
-                average=average,
                 threshold=confidence_threshold
             ).to(device),
             'recall' : Recall(
                 task='binary',
-                average=average,
                 threshold=confidence_threshold
             ).to(device),
             'f1' : F1Score(
                 task='binary',
-                average=average,
                 threshold=confidence_threshold
             ).to(device),
         })
