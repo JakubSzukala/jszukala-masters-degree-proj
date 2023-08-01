@@ -8,6 +8,8 @@ dataset:
 
 model_name: 'yolov7-tiny'
 
+log_dir: 'runs/train/custom-yolov7'
+
 optimizer:
   name: 'adam'
   lr: 0.001
@@ -34,7 +36,7 @@ trainer_params:
 
 training_params:
   num_epochs: 300
-  per_device_batch_size: 4
+  per_device_batch_size: 2
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
