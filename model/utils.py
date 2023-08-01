@@ -1,5 +1,15 @@
 import torch
 import torchvision
+import os
+import datetime
+
+
+def is_scalar(x):
+    if isinstance(x, (int, float)):
+        return True
+    if isinstance(x, torch.Tensor) and x.numel() == 1:
+        return True
+    return False
 
 
 def yolo_to_xyxy(boxes, image_sizes):
