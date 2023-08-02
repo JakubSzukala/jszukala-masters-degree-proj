@@ -6,6 +6,7 @@ import sys
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 import os
 import yaml
 import argparse
@@ -195,39 +196,71 @@ trainer.evaluate(
     collate_fn=yolov7_collate_fn
 )
 
+# TODO: Clean it up somehow, move it to separate function or do it in callback
 # Retrieve metrics
 pr_curve_precision = trainer.run_history.get_latest_metric('pr_curve_precision')
 pr_curve_recall = trainer.run_history.get_latest_metric('pr_curve_recall')
 pr_curve_thresholds = trainer.run_history.get_latest_metric('pr_curve_thresholds')
 pr_curve_thresholds = torch.cat([torch.tensor([0.0]), pr_curve_thresholds])
 f1_curve = 2 * (pr_curve_precision * pr_curve_recall) / (pr_curve_precision + pr_curve_recall)
-print(trainer.run_history.get_metric_names())
+confusion_matrix = trainer.run_history.get_latest_metric('confusion_matrix')
 
-fig, ax = plt.subplots(5)
-ax[0].set_title('Precision-Recall curve')
-ax[0].plot(pr_curve_recall, pr_curve_precision)
-ax[0].set_xlabel('Recall')
-ax[0].set_ylabel('Precision')
+# Save these metrics to csv files
+save_to_csv = lambda data, filepath: np.savetxt(filepath, data.numpy(), delimiter=',')
+save_to_csv(pr_curve_precision, os.path.join(time_encoded_log_dir, 'pr_curve_precision.csv'))
+save_to_csv(pr_curve_recall, os.path.join(time_encoded_log_dir, 'pr_curve_recall.csv'))
+save_to_csv(pr_curve_thresholds, os.path.join(time_encoded_log_dir, 'pr_curve_thresholds.csv'))
+save_to_csv(f1_curve, os.path.join(time_encoded_log_dir, 'f1_curve.csv'))
+save_to_csv(confusion_matrix, os.path.join(time_encoded_log_dir, 'confusion_matrix.csv'))
 
-ax[1].set_title('Confidence Thresholds')
-ax[1].plot(pr_curve_thresholds.flip(0))
-ax[1].set_xlabel('Index')
-ax[1].set_ylabel('Confidence')
+writer = SummaryWriter(time_encoded_log_dir)
 
-ax[2].set_title('Precision curve')
-ax[2].plot(pr_curve_thresholds, pr_curve_precision)
-ax[2].set_xlabel('Confidence')
-ax[2].set_ylabel('Precision')
+fig = plt.figure(1)
+plt.title('Precision-Recall curve')
+plt.plot(pr_curve_recall, pr_curve_precision)
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.savefig(os.path.join(time_encoded_log_dir, 'pr_curve.png'))
+writer.add_figure('Precision-Recall curve', fig)
 
-ax[3].set_title('Recall curve')
-ax[3].plot(pr_curve_thresholds, pr_curve_recall)
-ax[3].set_xlabel('Confidence')
-ax[3].set_ylabel('Recall')
+fig = plt.figure(2)
+plt.title('Confidence Thresholds')
+plt.plot(pr_curve_thresholds.flip(0))
+plt.xlabel('Index')
+plt.ylabel('Confidence')
+plt.savefig(os.path.join(time_encoded_log_dir, 'confidence_thresholds.png'))
+writer.add_figure('Confidence Thresholds', fig)
 
-ax[4].set_title('F1 curve')
-ax[4].plot(pr_curve_thresholds, f1_curve)
-ax[4].set_xlabel('Confidence')
-ax[4].set_ylabel('F1')
+fig = plt.figure(3)
+plt.title('Precision curve')
+plt.plot(pr_curve_thresholds, pr_curve_precision)
+plt.xlabel('Confidence')
+plt.ylabel('Precision')
+plt.savefig(os.path.join(time_encoded_log_dir, 'precision_curve.png'))
+writer.add_figure('Precision curve', fig)
 
-plt.savefig('figure.png')
-plt.show()
+fig = plt.figure(4)
+plt.title('Recall curve')
+plt.plot(pr_curve_thresholds, pr_curve_recall)
+plt.xlabel('Confidence')
+plt.ylabel('Recall')
+plt.savefig(os.path.join(time_encoded_log_dir, 'recall_curve.png'))
+writer.add_figure('Recall curve', fig)
+
+fig = plt.figure(5)
+plt.title('F1 curve')
+plt.plot(pr_curve_thresholds, f1_curve)
+plt.xlabel('Confidence')
+plt.ylabel('F1')
+plt.savefig(os.path.join(time_encoded_log_dir, 'f1_curve.png'))
+writer.add_figure('F1 curve', fig)
+
+fig = plt.figure(6)
+plt.title('Confusion matrix')
+plt.imshow(confusion_matrix)
+plt.xlabel('Predicted') # TODO: Check if these axes are correctly subtitled
+plt.ylabel('Actual')
+plt.savefig(os.path.join(time_encoded_log_dir, 'confusion_matrix.png'))
+writer.add_figure('Confusion matrix', fig)
+
+#plt.show()
