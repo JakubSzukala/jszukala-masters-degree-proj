@@ -196,15 +196,14 @@ trainer.evaluate(
     collate_fn=yolov7_collate_fn
 )
 
-# TODO: Clean it up somehow, move it to separate function or do it in callback
 # Retrieve metrics
 pr_curve_precision = trainer.run_history.get_latest_metric('pr_curve_precision')
 pr_curve_recall = trainer.run_history.get_latest_metric('pr_curve_recall')
 pr_curve_thresholds = trainer.run_history.get_latest_metric('pr_curve_thresholds')
-pr_curve_thresholds = torch.cat([torch.tensor([0.0]), pr_curve_thresholds])
-f1_curve = 2 * (pr_curve_precision * pr_curve_recall) / (pr_curve_precision + pr_curve_recall)
+f1_curve = trainer.run_history.get_latest_metric('f1_curve')
 confusion_matrix = trainer.run_history.get_latest_metric('confusion_matrix')
 
+# TODO: Clean it up somehow, move it to separate function or do it in callback
 # Save these metrics to csv files
 save_to_csv = lambda data, filepath: np.savetxt(filepath, data.numpy(), delimiter=',')
 save_to_csv(pr_curve_precision, os.path.join(time_encoded_log_dir, 'pr_curve_precision.csv'))
@@ -225,7 +224,7 @@ writer.add_figure('Precision-Recall curve', fig)
 
 fig = plt.figure(2)
 plt.title('Confidence Thresholds')
-plt.plot(pr_curve_thresholds.flip(0))
+plt.plot(pr_curve_thresholds.flip(0)) # TODO: Why flip?
 plt.xlabel('Index')
 plt.ylabel('Confidence')
 plt.savefig(os.path.join(time_encoded_log_dir, 'confidence_thresholds.png'))

@@ -119,14 +119,6 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
     def __init__(self, device='cuda:0', confidence_threshold=0.4):
         super().__init__()
         self.run_type = None
-        self.metrics_returns_lookup = {
-            # Metric             returns
-            'pr_curve' :         ['pr_curve_precision', 'pr_curve_recall', 'pr_curve_thresholds'],
-            'confusion_matrix' : ['confusion_matrix'],
-            'precision' :        ['precision'],
-            'recall' :           ['recall'],
-            'f1' :               ['f1'],
-        }
         self.series_metrics = MetricCollection(
             {
                 'pr_curve' : PrecisionRecallCurve(
@@ -153,16 +145,6 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
                 threshold=confidence_threshold
             ).to(device),
         })
-
-
-    def _update_history(self, trainer, computed_metrics_collection):
-        for metric_name, metric in computed_metrics_collection.items():
-            metric_returns_names = self.metrics_returns_lookup[metric_name]
-            if len(metric_returns_names) == 1: # TODO: This if is not necessary, loop is enough
-                trainer.run_history.update_metric(metric_returns_names[0], metric.cpu())
-            else:
-                for i, metric_output in enumerate(metric_returns_names):
-                    trainer.run_history.update_metric(metric_output, metric[i].cpu())
 
 
     def on_training_run_start(self, trainer, **kwargs):
@@ -213,19 +195,35 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
     def on_eval_epoch_end(self, trainer, **kwargs):
         # Metrics recorded every eval epoch
         computed_metrics = self.one_shot_metrics.compute()
-        self._update_history(trainer, computed_metrics)
+        for metric_name, metric in computed_metrics.items():
+            trainer.run_history.update_metric(metric_name, metric.cpu())
         self.one_shot_metrics.reset()
 
         # Metrics recorded only at the end of training
         # during evaluation run
         if self.run_type == RunType.EVALUATION:
             computed_curve_metrics = self.series_metrics.compute()
-            self._update_history(trainer, computed_curve_metrics)
+            trainer.run_history.update_metric(
+                'confusion_matrix',
+                computed_curve_metrics['confusion_matrix'].cpu()
+            )
+
+            # Prepare precision recall curve metrics and calculate f1 curve
+            pr_curve_precision = computed_curve_metrics['pr_curve'][0]
+            pr_curve_recall = computed_curve_metrics['pr_curve'][1]
+            pr_curve_thresholds = computed_curve_metrics['pr_curve'][2].cpu()
+            pr_curve_thresholds = torch.cat([torch.tensor([0.0]), pr_curve_thresholds])
+            f1_curve = 2 * (pr_curve_precision * pr_curve_recall) / (pr_curve_precision + pr_curve_recall)
+            trainer.run_history.update_metric('pr_curve_precision', pr_curve_precision.cpu())
+            trainer.run_history.update_metric('pr_curve_recall', pr_curve_recall.cpu())
+            trainer.run_history.update_metric('pr_curve_thresholds', pr_curve_thresholds)
+            trainer.run_history.update_metric('f1_curve', f1_curve.cpu())
             self.series_metrics.reset()
 
 
     def on_training_run_end(self, trainer, **kwargs):
         self.run_type = None
+
 
     def on_evaluation_run_end(self, trainer, **kwargs):
         self.run_type = None
