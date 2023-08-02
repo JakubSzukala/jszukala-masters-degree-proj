@@ -164,7 +164,8 @@ trainer = Yolov7Trainer(
         BinaryPrecisionRecallMetricsCallback(
             confidence_threshold=confidence_threshold
         ),
-        MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
+        #MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
+        MeanAveragePrecisionCallback([0.5]),
         DetectionLossTrackerCallback(),
         TensorboardLoggingCallback(time_encoded_log_dir),
         *get_default_callbacks(progress_bar=True)

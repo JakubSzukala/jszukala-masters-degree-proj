@@ -235,7 +235,7 @@ class MeanAveragePrecisionCallback(TrainerCallback):
         self.iou_thresholds = iou_thresholds
         if iou_thresholds is None:
             self.iou_thresholds = np.linspace(0.5, 0.75, 6).tolist()
-        self.th_string = f'{min(self.iou_thresholds())}' \
+        self.th_string = f'{min(self.iou_thresholds)}' \
             if len(self.iou_thresholds) == 1 \
             else f'{min(self.iou_thresholds)}-{max(self.iou_thresholds)}'
         self.metric = MeanAveragePrecision(
