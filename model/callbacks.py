@@ -134,7 +134,8 @@ class BinaryPrecisionRecallMetricsCallback(TrainerCallback):
                 ).to(device),
                 'confusion_matrix' : ConfusionMatrix(
                     task='binary',
-                    threshold=confidence_threshold
+                    threshold=confidence_threshold,
+                    normalize='true'
                 ).to(device),
             }
         )
