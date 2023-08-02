@@ -144,13 +144,13 @@ trainer = Yolov7Trainer(
         filter_eval_predictions, confidence_threshold=confidence_threshold, nms_threshold=nms_threshold
     ),
     callbacks=[
-        CalculateMeanAveragePrecisionCallback.create_from_targets_df(
-            targets_df=val_df.query("has_annotation == True")[
-                ["image_id", "xmin", "ymin", "xmax", "ymax", "class_id"]
-            ],
-            image_ids=set(val_df.image_id.unique()),
-            iou_threshold=iou_threshold,
-        ),
+        #CalculateMeanAveragePrecisionCallback.create_from_targets_df(
+            #targets_df=val_df.query("has_annotation == True")[
+                #["image_id", "xmin", "ymin", "xmax", "ymax", "class_id"]
+            #],
+            #image_ids=set(val_df.image_id.unique()),
+            #iou_threshold=iou_threshold,
+        #),
         SaveBestModelCallback(
             watch_metric=watch_metric_sbm,
             greater_is_better=greater_is_better_sbm
