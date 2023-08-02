@@ -108,8 +108,6 @@ def detection_results_to_classification_results(gt, preds, device):
     if preds.shape[0] > gt.shape[0]:
         padding_size = preds.shape[0] - gt.shape[0]
         mask = torch.ones(preds.shape[0], dtype=torch.bool, device=device)
-        print(f"Problematic index: {preds_match_idices}")
-        print(f"Mask shape: {mask.shape}")
         mask[preds_match_idices] = False
         preds_without_matches = preds[mask, :]
         confidence_scores_padding = preds_without_matches[:, 4]
