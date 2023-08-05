@@ -148,13 +148,13 @@ trainer = Yolov7Trainer(
         filter_eval_predictions, confidence_threshold=confidence_threshold, nms_threshold=nms_threshold
     ),
     callbacks=[
-        #CalculateMeanAveragePrecisionCallback.create_from_targets_df(
-            #targets_df=val_df.query("has_annotation == True")[
-                #["image_id", "xmin", "ymin", "xmax", "ymax", "class_id"]
-            #],
-            #image_ids=set(val_df.image_id.unique()),
-            #iou_threshold=iou_threshold,
-        #),
+        CalculateMeanAveragePrecisionCallback.create_from_targets_df(
+            targets_df=val_df.query("has_annotation == True")[
+                ["image_id", "xmin", "ymin", "xmax", "ymax", "class_id"]
+            ],
+            image_ids=set(val_df.image_id.unique()),
+            iou_threshold=iou_threshold,
+        ),
         SaveBestModelCallback(
             watch_metric=watch_metric_sbm1,
             greater_is_better=greater_is_better_sbm1,
@@ -175,7 +175,7 @@ trainer = Yolov7Trainer(
             confidence_threshold=confidence_threshold
         ),
         #MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
-        MeanAveragePrecisionCallback([0.5]),
+        #MeanAveragePrecisionCallback([0.5]),
         DetectionLossTrackerCallback(),
         TensorboardLoggingCallback(time_encoded_log_dir),
         *get_default_callbacks(progress_bar=True)
