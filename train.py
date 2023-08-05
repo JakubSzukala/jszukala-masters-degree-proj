@@ -49,7 +49,7 @@ def create_log_directory(log_dir):
         log_dir (str): Path to log directory
     """
     current_datetime = datetime.datetime.now()
-    current_datetime_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    current_datetime_str = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
     if not os.path.exists(log_dir):
         time_encoded_log_dir = log_dir + current_datetime_str
         os.makedirs(time_encoded_log_dir)
