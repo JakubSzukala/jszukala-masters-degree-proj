@@ -11,6 +11,7 @@ import os
 import yaml
 import argparse
 import datetime
+import shutil
 
 from data.adapter import load_gwhd_df
 from data.adapter import GwhdToYoloAdapter
@@ -138,6 +139,9 @@ np.random.seed(0)
 
 # Create unique per run time encoded log directory
 time_encoded_log_dir = create_log_directory(config['log_dir'])
+
+# Save config used for training under log directory
+shutil.copy(hyperparameters_config_file, time_encoded_log_dir)
 
 # Create trainer and train
 trainer = Yolov7Trainer(
