@@ -125,8 +125,12 @@ patience = config['trainer_params']['early_stopping_callback_params']['patience'
 watch_metric_es = config['trainer_params']['early_stopping_callback_params']['watch_metric']
 greater_is_better_es = config['trainer_params']['early_stopping_callback_params']['greater_is_better']
 early_stopping_threshold = config['trainer_params']['early_stopping_callback_params']['early_stopping_threshold']
-watch_metric_sbm = config['trainer_params']['save_best_model_callback_params']['watch_metric']
-greater_is_better_sbm = config['trainer_params']['save_best_model_callback_params']['greater_is_better']
+watch_metric_sbm1 = config['trainer_params']['save_best_model_callback_params1']['watch_metric']
+greater_is_better_sbm1 = config['trainer_params']['save_best_model_callback_params1']['greater_is_better']
+best_model_name1 = 'best_model_' + watch_metric_sbm1 + '.pt'
+watch_metric_sbm2 = config['trainer_params']['save_best_model_callback_params2']['watch_metric']
+greater_is_better_sbm2 = config['trainer_params']['save_best_model_callback_params2']['greater_is_better']
+best_model_name2 = 'best_model_' + watch_metric_sbm2 + '.pt'
 
 # Fix random seed
 torch.manual_seed(0)
@@ -152,8 +156,14 @@ trainer = Yolov7Trainer(
             #iou_threshold=iou_threshold,
         #),
         SaveBestModelCallback(
-            watch_metric=watch_metric_sbm,
-            greater_is_better=greater_is_better_sbm
+            watch_metric=watch_metric_sbm1,
+            greater_is_better=greater_is_better_sbm1,
+            save_path=os.path.join(time_encoded_log_dir, best_model_name1)
+        ),
+        SaveBestModelCallback(
+            watch_metric=watch_metric_sbm2,
+            greater_is_better=greater_is_better_sbm2,
+            save_path=os.path.join(time_encoded_log_dir, best_model_name2)
         ),
         #EarlyStoppingCallback(
             #early_stopping_patience=patience,

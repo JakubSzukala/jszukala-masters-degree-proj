@@ -25,12 +25,12 @@ trainer_params:
     iou_threshold: 0.5
 
   save_best_model_callback_params:
-    watch_metric: 'mAP:0.5-0.95'
+    watch_metric: 'mAP:0.5'
     greater_is_better: True
 
   early_stopping_callback_params:
     patience: 3
-    watch_metric: 'mAP:0.5-0.95'
+    watch_metric: 'mAP:0.5'
     greater_is_better: True
     early_stopping_threshold: 0.001
 
