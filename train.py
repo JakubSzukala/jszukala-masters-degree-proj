@@ -40,6 +40,7 @@ from model.callbacks import (
     DetectionLossTrackerCallback,
     TensorboardLoggingCallback
 )
+from model.augmentations import get_gwhd_augmentations
 
 
 def create_log_directory(log_dir):
@@ -80,7 +81,8 @@ val_df = load_gwhd_df(os.path.join(DATASET_ROOT_DIR, val_subset))
 
 # Instantiate adapters providing interface between df descriptors and yolov7 dataset
 images_dir = os.path.join(config['dataset']['path'], config['dataset']['images_dir'])
-train_adapter = GwhdToYoloAdapter(images_dir, train_df, None)
+train_augmentations = get_gwhd_augmentations()
+train_adapter = GwhdToYoloAdapter(images_dir, train_df, train_augmentations)
 test_adapter = GwhdToYoloAdapter(images_dir, test_df, None)
 val_adapter = GwhdToYoloAdapter(images_dir, val_df, None)
 
