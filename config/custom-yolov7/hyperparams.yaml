@@ -40,4 +40,4 @@ training_params:
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
-    k_decay: 2
+    k_decay: 1
