@@ -22,8 +22,8 @@ optimizer:
 
 trainer_params:
   filter_eval_predictions_fn_params:
-    confidence_threshold: 0.01
-    nms_threshold: 0.3
+    confidence_threshold: 0.4
+    nms_threshold: 0.45
 
   mean_average_precision_callback_params:
     iou_threshold: 0.5
