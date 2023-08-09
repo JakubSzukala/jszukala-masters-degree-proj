@@ -10,6 +10,7 @@ model:
   model_name: 'yolov7-tiny'
   required_img_width: 640
   required_img_height: 640
+  pretrained: False
 
 log_dir: 'runs/train/custom-yolov7'
 
