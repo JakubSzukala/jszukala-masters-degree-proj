@@ -12,7 +12,7 @@ def get_gwhd_train_augmentations(img_width=640, img_height=640):
                 A.MotionBlur(p=0.9),
                 A.GaussNoise(p=0.1),
             ], p=0.6),
-            A.RandomShadow(p=0.5),
+            A.RandomShadow(num_shadows_lower=1, num_shadows_upper=4, p=0.5),
             A.RandomBrightnessContrast(p=0.5),
             A.FancyPCA(alpha=1),
         ],
