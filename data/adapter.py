@@ -63,8 +63,6 @@ class GwhdToYoloAdapter(torch.utils.data.Dataset):
         image = Image.open(os.path.join(self.images_dir_path, file_name)).convert("RGB")
         image = np.array(image)
 
-        image_hw = image.shape[:2]
-
         if image_info.has_annotation.any():
             xyxy_bboxes = image_info[["xmin", "ymin", "xmax", "ymax"]].values
             class_ids = image_info["class_id"].values
@@ -79,5 +77,7 @@ class GwhdToYoloAdapter(torch.utils.data.Dataset):
             image = transformed["image"]
             xyxy_bboxes = np.array(transformed["bboxes"])
             class_ids = np.array(transformed["labels"])
+
+        image_hw = image.shape[:2]
 
         return image, xyxy_bboxes, class_ids, image_id, image_hw
