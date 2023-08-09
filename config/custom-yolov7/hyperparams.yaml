@@ -33,7 +33,7 @@ trainer_params:
     greater_is_better: True
 
   early_stopping_callback_params:
-    patience: 20
+    patience: 12
     watch_metric: 'mAP:0.5'
     greater_is_better: True
     early_stopping_threshold: 0.001
