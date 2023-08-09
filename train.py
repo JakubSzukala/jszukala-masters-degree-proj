@@ -83,9 +83,11 @@ val_df = load_gwhd_df(os.path.join(DATASET_ROOT_DIR, val_subset))
 images_dir = os.path.join(config['dataset']['path'], config['dataset']['images_dir'])
 img_w = config['model']['required_img_width']
 img_h = config['model']['required_img_height']
+
+#train_augmentations = get_gwhd_val_augmentations(img_w, img_h)
 train_augmentations = get_gwhd_train_augmentations(img_w, img_h)
-val_augmentations = get_gwhd_train_augmentations(img_w, img_h)
-test_augmentations = get_gwhd_train_augmentations(img_w, img_h)
+val_augmentations = get_gwhd_val_augmentations(img_w, img_h)
+test_augmentations = get_gwhd_test_augmentations(img_w, img_h)
 train_adapter = GwhdToYoloAdapter(images_dir, train_df, train_augmentations)
 test_adapter = GwhdToYoloAdapter(images_dir, test_df, test_augmentations)
 val_adapter = GwhdToYoloAdapter(images_dir, val_df, val_augmentations)
@@ -155,13 +157,6 @@ trainer = Yolov7Trainer(
         filter_eval_predictions, confidence_threshold=confidence_threshold, nms_threshold=nms_threshold
     ),
     callbacks=[
-        CalculateMeanAveragePrecisionCallback.create_from_targets_df(
-            targets_df=val_df.query("has_annotation == True")[
-                ["image_id", "xmin", "ymin", "xmax", "ymax", "class_id"]
-            ],
-            image_ids=set(val_df.image_id.unique()),
-            iou_threshold=iou_threshold,
-        ),
         SaveBestModelCallback(
             watch_metric=watch_metric_sbm,
             greater_is_better=greater_is_better_sbm,
@@ -177,7 +172,7 @@ trainer = Yolov7Trainer(
             confidence_threshold=confidence_threshold
         ),
         #MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
-        #MeanAveragePrecisionCallback([0.5]),
+        MeanAveragePrecisionCallback([0.5]),
         DetectionLossTrackerCallback(),
         TensorboardLoggingCallback(time_encoded_log_dir),
         *get_default_callbacks(progress_bar=True)
