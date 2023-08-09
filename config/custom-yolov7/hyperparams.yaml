@@ -6,7 +6,10 @@ dataset:
     test: 'overfit_test.csv'
     val: 'overfit_val.csv'
 
-model_name: 'yolov7-tiny'
+model:
+  model_name: 'yolov7-tiny'
+  required_img_width: 640
+  required_img_height: 640
 
 log_dir: 'runs/train/custom-yolov7'
 

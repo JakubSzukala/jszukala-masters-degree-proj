@@ -40,7 +40,7 @@ from model.callbacks import (
     DetectionLossTrackerCallback,
     TensorboardLoggingCallback
 )
-from model.augmentations import get_gwhd_augmentations
+from model.augmentations import get_gwhd_train_augmentations, get_gwhd_test_augmentations, get_gwhd_val_augmentations
 
 
 def create_log_directory(log_dir):
@@ -81,10 +81,14 @@ val_df = load_gwhd_df(os.path.join(DATASET_ROOT_DIR, val_subset))
 
 # Instantiate adapters providing interface between df descriptors and yolov7 dataset
 images_dir = os.path.join(config['dataset']['path'], config['dataset']['images_dir'])
-train_augmentations = get_gwhd_augmentations()
+img_w = config['model']['required_img_width']
+img_h = config['model']['required_img_height']
+train_augmentations = get_gwhd_train_augmentations(img_w, img_h)
+val_augmentations = get_gwhd_train_augmentations(img_w, img_h)
+test_augmentations = get_gwhd_train_augmentations(img_w, img_h)
 train_adapter = GwhdToYoloAdapter(images_dir, train_df, train_augmentations)
-test_adapter = GwhdToYoloAdapter(images_dir, test_df, None)
-val_adapter = GwhdToYoloAdapter(images_dir, val_df, None)
+test_adapter = GwhdToYoloAdapter(images_dir, test_df, test_augmentations)
+val_adapter = GwhdToYoloAdapter(images_dir, val_df, val_augmentations)
 
 # Instantiate yolov7 datasets
 yolo_train_ds = Yolov7Dataset(train_adapter)
@@ -100,7 +104,7 @@ boxes[:, [0, 2]] *= image_size[1]
 boxes[:, [1, 3]] *= image_size[0]
 
 #show_image(image_tensor.permute(1, 2, 0), boxes.tolist(), None, 'cxcywh')
-model_name = config['model_name']
+model_name = config['model']['model_name']
 model = create_yolov7_model(model_name, num_classes=1, pretrained=True)
 loss_func = create_yolov7_loss(model, image_size=image_size[0])
 

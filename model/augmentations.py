@@ -3,10 +3,10 @@ import albumentations as A
 
 GWHD_PAD_VALUE = [82, 82, 54] # Average values per channel from GWHD dataset
 
-def get_gwhd_augmentations():
+def get_gwhd_train_augmentations(img_width=640, img_height=640):
     return A.Compose(
         [
-            A.RandomScale(scale_limit=[-0.5, 0.2], interpolation=cv2.INTER_CUBIC, p=0.5),
+            A.Resize(width=img_width, height=img_height, interpolation=cv2.INTER_CUBIC, always_apply=True),
             A.Flip(p=0.5),
             A.OneOf([
                 A.MotionBlur(p=0.9),
@@ -15,11 +15,28 @@ def get_gwhd_augmentations():
             A.RandomShadow(p=0.5),
             A.RandomBrightnessContrast(p=0.5),
             A.FancyPCA(alpha=1),
-            A.PadIfNeeded(min_height=1024, min_width=1024, border_mode=cv2.BORDER_CONSTANT, value=GWHD_PAD_VALUE),
-            A.RandomCrop(width=1024, height=1024),
         ],
         bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], min_area=0, min_visibility=0)
     )
+
+
+def get_gwhd_test_augmentations(img_width=640, img_height=640):
+    return A.Compose(
+        [
+            A.Resize(width=img_width, height=img_height, interpolation=cv2.INTER_CUBIC, always_apply=True),
+        ],
+        bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], min_area=0, min_visibility=0)
+    )
+
+
+def get_gwhd_val_augmentations(img_width=640, img_height=640):
+    return A.Compose(
+        [
+            A.Resize(width=img_width, height=img_height, interpolation=cv2.INTER_CUBIC, always_apply=True),
+        ],
+        bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], min_area=0, min_visibility=0)
+    )
+
 
 if __name__ == '__main__':
     import argparse
@@ -41,14 +58,13 @@ if __name__ == '__main__':
     train_df = load_gwhd_df(os.path.join(DATASET_ROOT_DIR, train_subset))
     images_dir = os.path.join(config['dataset']['path'], config['dataset']['images_dir'])
 
-    transforms = get_gwhd_augmentations()
+    transforms = get_gwhd_train_augmentations()
 
     train_adapter = GwhdToYoloAdapter(images_dir, train_df, transforms)
     yolo_train_ds = Yolov7Dataset(train_adapter)
 
     for i in range(len(yolo_train_ds)):
         image_tensor, labels, image_id, image_size = yolo_train_ds[i]
-        print(f"Image id: {image_id}")
         boxes = labels[:, 2:]
         boxes[:, [0, 2]] *= image_size[1]
         boxes[:, [1, 3]] *= image_size[0]
