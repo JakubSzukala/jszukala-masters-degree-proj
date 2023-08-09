@@ -10,7 +10,7 @@ model:
   model_name: 'yolov7-tiny'
   required_img_width: 640
   required_img_height: 640
-  pretrained: False
+  pretrained: True
 
 log_dir: 'runs/train/custom-yolov7'
 
@@ -22,26 +22,26 @@ optimizer:
 
 trainer_params:
   filter_eval_predictions_fn_params:
-    confidence_threshold: 0.4
+    confidence_threshold: 0.15
     nms_threshold: 0.45
 
   mean_average_precision_callback_params:
     iou_threshold: 0.5
 
   save_best_model_callback_params:
-    watch_metric: 'map'
+    watch_metric: 'mAP:0.5'
     greater_is_better: True
 
   early_stopping_callback_params:
     patience: 3
-    watch_metric: 'map'
+    watch_metric: 'mAP:0.5'
     greater_is_better: True
     early_stopping_threshold: 0.001
 
 training_params:
-  num_epochs: 3
+  num_epochs: 300
   per_device_batch_size: 2
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
-    k_decay: 1
+    k_decay: 2
