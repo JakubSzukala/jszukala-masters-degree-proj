@@ -24,11 +24,14 @@ from yolov7.dataset import yolov7_collate_fn
 from yolov7.trainer import Yolov7Trainer
 from yolov7.trainer import filter_eval_predictions
 from yolov7.evaluation import CalculateMeanAveragePrecisionCallback
+from yolov7.utils import Yolov7ModelEma
 
 from pytorch_accelerated.schedulers import CosineLrScheduler
 from pytorch_accelerated.callbacks import (
     EarlyStoppingCallback,
     SaveBestModelCallback,
+    ProgressBarCallback,
+    ModelEmaCallback,
     get_default_callbacks
 )
 
@@ -150,6 +153,8 @@ time_encoded_log_dir = create_log_directory(config['log_dir'])
 # Save config used for training under log directory
 shutil.copy(hyperparameters_config_file, time_encoded_log_dir)
 
+map05_callback = MeanAveragePrecisionCallback([0.5])
+
 # Create trainer and train
 trainer = Yolov7Trainer(
     model=model,
@@ -174,7 +179,12 @@ trainer = Yolov7Trainer(
             confidence_threshold=confidence_threshold
         ),
         #MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
-        MeanAveragePrecisionCallback([0.5]),
+        map05_callback,
+        ModelEmaCallback(
+            decay=0.9999,
+            model_ema=Yolov7ModelEma,
+            callbacks=[ProgressBarCallback, map05_callback]
+        ),
         DetectionLossTrackerCallback(),
         TensorboardLoggingCallback(time_encoded_log_dir),
         *get_default_callbacks(progress_bar=True)
