@@ -142,6 +142,8 @@ early_stopping_threshold = config['trainer_params']['early_stopping_callback_par
 watch_metric_sbm = config['trainer_params']['save_best_model_callback_params']['watch_metric']
 greater_is_better_sbm = config['trainer_params']['save_best_model_callback_params']['greater_is_better']
 best_model_name = 'best_model_' + watch_metric_sbm + '.pt'
+decay_ema = config['trainer_params']['model_ema_callback']['decay']
+greater_is_better_ema = config['trainer_params']['model_ema_callback']['greater_is_better']
 
 # Fix random seed
 torch.manual_seed(0)
@@ -181,9 +183,9 @@ trainer = Yolov7Trainer(
         #MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
         map05_callback,
         ModelEmaCallback(
-            decay=0.9999,
+            decay=decay_ema,
             save_path=os.path.join(time_encoded_log_dir, 'model_ema.pt'),
-            greater_is_better=True,
+            greater_is_better=greater_is_better_ema,
             model_ema=Yolov7ModelEma,
             callbacks=[ProgressBarCallback, map05_callback]
         ),

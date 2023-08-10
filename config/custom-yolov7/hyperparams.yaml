@@ -39,6 +39,10 @@ trainer_params:
     greater_is_better: True
     early_stopping_threshold: 0.001
 
+  model_ema_callback:
+    decay: 0.9999
+    greater_is_better: True
+
 training_params:
   num_epochs: 300
   per_device_batch_size: 2
