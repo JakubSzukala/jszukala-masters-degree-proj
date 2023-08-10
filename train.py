@@ -169,12 +169,12 @@ trainer = Yolov7Trainer(
             greater_is_better=greater_is_better_sbm,
             save_path=os.path.join(time_encoded_log_dir, best_model_name)
         ),
-        #EarlyStoppingCallback(
-            #early_stopping_patience=patience,
-            #watch_metric=watch_metric_es,
-            #greater_is_better=greater_is_better_es,
-            #early_stopping_threshold=early_stopping_threshold,
-        #),
+        EarlyStoppingCallback(
+            early_stopping_patience=patience,
+            watch_metric=watch_metric_es,
+            greater_is_better=greater_is_better_es,
+            early_stopping_threshold=early_stopping_threshold,
+        ),
         BinaryPrecisionRecallMetricsCallback(
             confidence_threshold=confidence_threshold
         ),
