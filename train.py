@@ -156,6 +156,7 @@ time_encoded_log_dir = create_log_directory(config['log_dir'])
 shutil.copy(hyperparameters_config_file, time_encoded_log_dir)
 
 map05_callback = MeanAveragePrecisionCallback([0.5])
+map05_callback_ema = MeanAveragePrecisionCallback([0.5])
 
 # Create trainer and train
 trainer = Yolov7Trainer(
@@ -187,7 +188,7 @@ trainer = Yolov7Trainer(
             save_path=os.path.join(time_encoded_log_dir, 'model_ema.pt'),
             greater_is_better=greater_is_better_ema,
             model_ema=Yolov7ModelEma,
-            callbacks=[ProgressBarCallback, map05_callback]
+            callbacks=[ProgressBarCallback, map05_callback_ema]
         ),
         DetectionLossTrackerCallback(),
         TensorboardLoggingCallback(time_encoded_log_dir),
