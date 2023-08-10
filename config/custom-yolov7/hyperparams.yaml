@@ -16,6 +16,7 @@ log_dir: 'runs/train/custom-yolov7'
 
 optimizer:
   name: 'adam'
+  weight_decay: 0.0005
   lr: 0.001
   momentum: 0.9
   nesterov: True
