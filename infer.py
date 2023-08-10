@@ -22,6 +22,7 @@ state_dict = torch.load(parser.parse_args().weights)
 model.load_state_dict(state_dict=state_dict['model_state_dict'])
 model.eval()
 
+# TODO: Add resizing if necessary
 transform = ToTensor()
 image_tensor = transform(PIL.Image.open(parser.parse_args().image))
 confidence_threshold = parser.parse_args().confidence_th
