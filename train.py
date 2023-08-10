@@ -182,6 +182,8 @@ trainer = Yolov7Trainer(
         map05_callback,
         ModelEmaCallback(
             decay=0.9999,
+            save_path=os.path.join(time_encoded_log_dir, 'model_ema.pt'),
+            greater_is_better=True,
             model_ema=Yolov7ModelEma,
             callbacks=[ProgressBarCallback, map05_callback]
         ),
