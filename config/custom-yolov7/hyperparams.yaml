@@ -7,9 +7,9 @@ dataset:
     val: 'overfit_val.csv'
 
 model:
-  model_name: 'yolov7-tiny'
-  required_img_width: 640
-  required_img_height: 640
+  model_name: 'yolov7-w6'
+  required_img_width: 1280
+  required_img_height: 1280
   pretrained: True
 
 log_dir: 'runs/train/custom-yolov7'
@@ -45,7 +45,7 @@ trainer_params:
 
 training_params:
   num_epochs: 300
-  per_device_batch_size: 2
+  per_device_batch_size: 1
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
