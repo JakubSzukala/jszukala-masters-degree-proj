@@ -15,6 +15,7 @@ import shutil
 
 from data.adapter import load_gwhd_df
 from data.adapter import GwhdToYoloAdapter
+from data.upsampling import SamplerConstructor
 
 from yolov7.dataset import Yolov7Dataset
 from yolov7.plotting import show_image
@@ -185,6 +186,17 @@ num_warmup_epochs = config['training_params']['cosine_lr_scheduler_params']['num
 num_cooldown_epochs = config['training_params']['cosine_lr_scheduler_params']['num_cooldown_epochs']
 k_decay = config['training_params']['cosine_lr_scheduler_params']['k_decay']
 
+# Upsample by given metric (domain or development stage)
+if config['training_params']['upsample']:
+    sampler_constructor = SamplerConstructor()
+    sampler_constructor.load_dataset(os.path.join(config['dataset']['path'], config['dataset']['subsets']['train']))
+    sampler = sampler_constructor.get_sampler(column='domain')
+    train_dataloader_kwargs = {
+        'sampler' : sampler
+    }
+else:
+    train_dataloader_kwargs = None
+
 trainer.train(
         num_epochs=num_epochs,
         train_dataset=yolo_train_ds,
@@ -196,6 +208,7 @@ trainer.train(
             k_decay=k_decay,
         ),
         collate_fn=yolov7_collate_fn,
+        train_dataloader_kwargs=train_dataloader_kwargs
 )
 
 trainer.evaluate(
