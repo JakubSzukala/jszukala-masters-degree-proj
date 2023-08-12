@@ -44,6 +44,8 @@ def test_yolov7(**kwargs):
         collate_fn=yolov7_collate_fn
     )
 
+    return trainer.run_history.get_latest_metric('mAP:0.5-0.75')
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, required=True, help='Yolov7 model name')
@@ -56,5 +58,4 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, required=False, default=2, help='Batch size')
 
     cli_args = parser.parse_args()
-    print(cli_args)
     test_yolov7(**vars(cli_args))
