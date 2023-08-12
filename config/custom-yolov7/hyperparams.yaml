@@ -1,5 +1,5 @@
 dataset:
-  path: '/home/js/gwhd_2021'
+  path: '/home/js/gwhd_2021-2'
   images_dir: 'images/'
   subsets:
     train: 'overfit_train.csv'
@@ -30,12 +30,12 @@ trainer_params:
     iou_threshold: 0.5
 
   save_best_model_callback_params:
-    watch_metric: 'mAP:0.5'
+    watch_metric: 'mAP:0.5-0.75'
     greater_is_better: True
 
   early_stopping_callback_params:
     patience: 12
-    watch_metric: 'mAP:0.5'
+    watch_metric: 'mAP:0.5-0.75'
     greater_is_better: True
     early_stopping_threshold: 0.001
 
@@ -49,4 +49,4 @@ training_params:
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
-    k_decay: 2
+    k_decay: 1
