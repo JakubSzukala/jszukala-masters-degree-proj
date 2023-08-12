@@ -24,14 +24,11 @@ from yolov7.dataset import yolov7_collate_fn
 from yolov7.trainer import Yolov7Trainer
 from yolov7.trainer import filter_eval_predictions
 from yolov7.evaluation import CalculateMeanAveragePrecisionCallback
-from yolov7.utils import Yolov7ModelEma
 
 from pytorch_accelerated.schedulers import CosineLrScheduler
 from pytorch_accelerated.callbacks import (
     EarlyStoppingCallback,
     SaveBestModelCallback,
-    ProgressBarCallback,
-    ModelEmaCallback,
     get_default_callbacks
 )
 
@@ -113,24 +110,22 @@ model_name = config['model']['model_name']
 model = create_yolov7_model(model_name, num_classes=1, pretrained=config['model']['pretrained'])
 loss_func = create_yolov7_loss(model, image_size=image_size[0])
 
-# Weight decay should only be applied to conv layers
-param_groups = model.get_parameter_groups()
-
 if config['optimizer']['name'] == 'adam':
     optimizer = torch.optim.Adam(
-        param_groups['other_params'],
+        model.parameters(),
         lr=config['optimizer']['lr'],
     )
 
 elif config['optimizer']['name'] == 'sgd':
     optimizer = torch.optim.SGD(
-        param_groups['other_params'],
+        model.parameters(),
         lr=config['optimizer']['lr'],
         momentum=config['optimizer']['momentum'],
         nesterov=config['optimizer']['nesterov']
     )
 else:
     raise ValueError('Optimizer not supported')
+
 
 confidence_threshold = config['trainer_params']['filter_eval_predictions_fn_params']['confidence_threshold']
 nms_threshold = config['trainer_params']['filter_eval_predictions_fn_params']['nms_threshold']
@@ -142,8 +137,6 @@ early_stopping_threshold = config['trainer_params']['early_stopping_callback_par
 watch_metric_sbm = config['trainer_params']['save_best_model_callback_params']['watch_metric']
 greater_is_better_sbm = config['trainer_params']['save_best_model_callback_params']['greater_is_better']
 best_model_name = 'best_model_' + watch_metric_sbm + '.pt'
-decay_ema = config['trainer_params']['model_ema_callback']['decay']
-greater_is_better_ema = config['trainer_params']['model_ema_callback']['greater_is_better']
 
 # Fix random seed
 torch.manual_seed(0)
@@ -154,9 +147,6 @@ time_encoded_log_dir = create_log_directory(config['log_dir'])
 
 # Save config used for training under log directory
 shutil.copy(hyperparameters_config_file, time_encoded_log_dir)
-
-map05_callback = MeanAveragePrecisionCallback([0.5])
-map05_callback_ema = MeanAveragePrecisionCallback([0.5])
 
 # Create trainer and train
 trainer = Yolov7Trainer(
@@ -172,43 +162,21 @@ trainer = Yolov7Trainer(
             greater_is_better=greater_is_better_sbm,
             save_path=os.path.join(time_encoded_log_dir, best_model_name)
         ),
-        EarlyStoppingCallback(
-            early_stopping_patience=patience,
-            watch_metric=watch_metric_es,
-            greater_is_better=greater_is_better_es,
-            early_stopping_threshold=early_stopping_threshold,
-        ),
+        #EarlyStoppingCallback(
+            #early_stopping_patience=patience,
+            #watch_metric=watch_metric_es,
+            #greater_is_better=greater_is_better_es,
+            #early_stopping_threshold=early_stopping_threshold,
+        #),
         BinaryPrecisionRecallMetricsCallback(
             confidence_threshold=confidence_threshold
         ),
-        #MeanAveragePrecisionCallback(np.linspace(0.5, 0.95, 10).tolist()),
-        map05_callback,
-        ModelEmaCallback(
-            decay=decay_ema,
-            save_path=os.path.join(time_encoded_log_dir, 'model_ema.pt'),
-            greater_is_better=greater_is_better_ema,
-            model_ema=Yolov7ModelEma,
-            callbacks=[ProgressBarCallback, map05_callback_ema]
-        ),
+        MeanAveragePrecisionCallback(np.linspace(0.5, 0.75, 6).tolist()),
+        #MeanAveragePrecisionCallback([0.5]),
         DetectionLossTrackerCallback(),
         TensorboardLoggingCallback(time_encoded_log_dir),
         *get_default_callbacks(progress_bar=True)
     ],
-)
-
-# Add weight decay to conv layers together with gradient accumulation
-total_batch_size = (
-    config['training_params']['per_device_batch_size'] * trainer._accelerator.num_processes
-)  # batch size across all processes
-nominal_batch_size = 64
-num_accumulate_steps = max(round(nominal_batch_size / total_batch_size), 1)
-base_weight_decay = config['optimizer']['weight_decay']
-scaled_weight_decay = (
-    base_weight_decay * total_batch_size * num_accumulate_steps / nominal_batch_size
-)
-
-optimizer.add_param_group(
-    {'params' : param_groups['conv_weights'], 'weight_decay' : scaled_weight_decay}
 )
 
 num_epochs = config['training_params']['num_epochs']
@@ -228,7 +196,6 @@ trainer.train(
             k_decay=k_decay,
         ),
         collate_fn=yolov7_collate_fn,
-        gradient_accumulation_steps=num_accumulate_steps
 )
 
 trainer.evaluate(
