@@ -109,7 +109,11 @@ boxes[:, [1, 3]] *= image_size[0]
 #show_image(image_tensor.permute(1, 2, 0), boxes.tolist(), None, 'cxcywh')
 model_name = config['model']['model_name']
 model = create_yolov7_model(model_name, num_classes=1, pretrained=config['model']['pretrained'])
-loss_func = create_yolov7_loss(model, image_size=image_size[0])
+loss_func = create_yolov7_loss(
+    model,
+    image_size=image_size[0],
+    box_loss_weight=0.3
+)
 
 if config['optimizer']['name'] == 'adam':
     optimizer = torch.optim.Adam(

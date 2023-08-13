@@ -46,7 +46,7 @@ trainer_params:
 training_params:
   num_epochs: 300
   per_device_batch_size: 1
-  upsample: True
+  upsample: False
   cosine_lr_scheduler_params:
     num_warmup_epochs: 5
     num_cooldown_epochs: 5
