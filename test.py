@@ -1,6 +1,7 @@
 import argparse
 from functools import partial
 import os
+import torch
 
 from yolov7.trainer import Yolov7Trainer
 from yolov7 import create_yolov7_model
@@ -16,6 +17,9 @@ from pytorch_accelerated.callbacks import get_default_callbacks
 from model.callbacks import MeanAveragePrecisionCallback
 
 def test_yolov7(**kwargs):
+    torch.manual_seed(0)
+    np.random.seed(0)
+
     model = create_yolov7_model(kwargs['model'] , num_classes=1, pretrained=False)
 
     test_df = load_gwhd_df(kwargs['dataset'])
