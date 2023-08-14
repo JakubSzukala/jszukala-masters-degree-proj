@@ -49,13 +49,6 @@ class GwhdToYoloAdapter(torch.utils.data.Dataset):
         }
 
 
-    def _clip_bboxes(self, bboxes: np.ndarray, image_hw: Tuple[int, int]) -> np.ndarray:
-        bboxes[:, [0, 2]] = np.clip(bboxes[:, [0, 2]], 0, image_hw[1])
-        bboxes[:, [1, 3]] = np.clip(bboxes[:, [1, 3]], 0, image_hw[0])
-
-        return bboxes
-
-
     def __len__(self) -> int:
         return len(self.image_idx_to_image_id)
 
@@ -72,7 +65,6 @@ class GwhdToYoloAdapter(torch.utils.data.Dataset):
 
         if image_info.has_annotation.any():
             xyxy_bboxes = image_info[["xmin", "ymin", "xmax", "ymax"]].values
-            self._clip_bboxes(xyxy_bboxes, image.shape[:2])
             class_ids = image_info["class_id"].values
         else:
             xyxy_bboxes = np.array([])
