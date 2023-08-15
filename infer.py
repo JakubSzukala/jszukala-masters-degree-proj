@@ -44,7 +44,7 @@ def infer(**kwargs):
     with torch.no_grad():
         outputs = model(image_tensor[None])
         preds = model.postprocess(outputs, conf_thres=confidence_threshold, multiple_labels_per_box=False)
-        nms_preds = filter_eval_predictions(preds, confidence_threshold=kwargs['nms_th'], nms_threshold=kwargs['nms_th'])
+        nms_preds = filter_eval_predictions(preds, confidence_threshold=kwargs['confidence_th'], nms_threshold=kwargs['nms_th'])
 
     boxes = nms_preds[0][:, :4]
     scores = nms_preds[0][:, 4]
