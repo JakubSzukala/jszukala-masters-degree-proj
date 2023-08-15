@@ -112,7 +112,6 @@ model = create_yolov7_model(model_name, num_classes=1, pretrained=config['model'
 loss_func = create_yolov7_loss(
     model,
     image_size=image_size[0],
-    box_loss_weight=0.3
 )
 
 if config['optimizer']['name'] == 'adam':
