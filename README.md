@@ -1,30 +1,32 @@
 # jszukala-masters-degree-proj
-Wheat head detection on GWHD_2021 dataset
+Wheat head detection on GWHD_2021 dataset - PUT masters degree project.
 
-PUT masters degree project. Work in progress.
+What was done:
+- [x] Analyzed and cleaned image data of wheat heads (see [here](https://github.com/JakubSzukala/jszukala-masters-degree-proj/blob/main/data/scripts/data_analysis.ipynb) and [here](https://github.com/JakubSzukala/jszukala-masters-degree-proj/blob/main/data/scripts/data_cleanup.ipynb))
+- [x] Prepared Google Cloud based training of the neural network
+- [x] Prepared metrics for algorithm evaluation (see [here](https://github.com/JakubSzukala/jszukala-masters-degree-proj/blob/main/model/callbacks.py) and [here](https://github.com/JakubSzukala/jszukala-masters-degree-proj/blob/main/model/utils.py))
+- [x] Trained YOLOV7 neural network to detect wheat heads on image data
+- [x] Created wheat density map of the area photographed with UAV with use of images’ geolocation and other camera metadata
 
-#### Current state of the project
-Currently I was able to quite successfully train stock YOLOv7 networks to perform the task. Current work is focused on custom implementation of YOLOv7 that allows for far greater flexibility and my intention is to use this flexibility to gain an edge over the stock YOLOv7 results with techniques like image augmentation and pseudo labelling.
+![detection_example](img/detection_example.png)
 
-Below are presented results from stock YOLOv7:
-![results_yolov7](img/results_stock_yolov7.png)
-![results_yolov7_preds](img/test_batch2_pred_stock_yolov7.jpg)
+In the table below are presented training results. Test was performed on GWHD 2020 [test set](https://zenodo.org/record/5092309). M1 is winner model of 2020 competition, M2-M8 are models trained with Yolov7-training library and M9 and M10 are original YOLOV7 implementations from YOLOV7 paper authors.
 
-#### TODOS
-Very general list of TODOs:
-- [x] Perform data exploration
-- [x] Cleanup data
-- [x] Create cloud based training
-- [x] Perform training on ["stock" YOLOv7](https://github.com/WongKinYiu/yolov7)
-    - [x] Train regular YOLOv7
-    - [x] Train largest model YOLOv7-e6e
-- [ ] Implement custom training loop using Chris Hughes's from Microsoft YOLOv7 [implementation](https://github.com/Chris-hughes10/Yolov7-training)
-    - [x] Implement example training loop
-    - [x] Overfit the model to see if the training procedure works as intended
-    - [ ] Implement and track the same metrics that are by default used in stock YOLOv7 for more accurate comparission
-    - [ ] Add performance enhancements to the base training:
-        - [ ] Image data augmentations
-        - [ ] Pseudo labelling
-        - [ ] ...
-- [ ] Make comparission between my results and results of the competition winners
-- [ ] Create a heat map describing wheat density on geo - annotated wheat image data
+|     | mAP@0.5:0.75 |                      Remrks                     |
+|:---:|:------------:|:-----------------------------------------------:|
+|  M1 |     0.689    | GWHD2020 winner 2x Effdet + FasterRCNN ensemble |
+|  M2 |     0.573    |         Baseline model, no enhancements         |
+|  M3 |     0.684    |                 DA*, k_decay = 2                |
+|  M4 |     0.700    |                 DA*, k_decay = 1                |
+|  M5 |     0.696    |     DA*, k_decay = 1, Gradient Accumulation     |
+|  M6 |     0.482    |         DA*, k_decay = 1, Weights Decay         |
+|  M7 |     0.678    |       DA*, k_decay = 1, Domain Upsampling       |
+|  M8 |     0.704    |        DA*, k_decay = 1, Pseudo Labeling        |
+|  M9 |     0.762    |                 Original YOLOV7                 |
+| M10 |     0.749    |               Original YOLOV7-E6E               |
+
+Heat map below presents a density of wheat heads on self collected geolocated images.
+![heatmap](img/enitre_density_map.png)
+
+###### Disclaimer
+This was my masters project and because of time pressure I did cut some corners when it comes to good programming practices and currently I am not willing to sink more time into this project to fix this.
