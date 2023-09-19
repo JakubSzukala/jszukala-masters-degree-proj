@@ -1,4 +1,4 @@
-
+import argparse
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ import os
 
 DATASET_ROOT_DIR = os.environ['DATASET_ROOT_DIR']
 
-def create_yolo_dir_tree():
+def create_gwhd_yolo_dir_tree():
     os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset', exist_ok=True)
     os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/images/train', exist_ok=True)
     os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/images/test', exist_ok=True)
@@ -15,6 +15,11 @@ def create_yolo_dir_tree():
     os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/labels/train', exist_ok=True)
     os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/labels/test', exist_ok=True)
     os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/labels/val', exist_ok=True)
+
+def create_yolo_dir_tree(name):
+    os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset', exist_ok=True)
+    os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/images/{name}', exist_ok=True)
+    os.makedirs(f'{DATASET_ROOT_DIR}/yolo-format-dataset/labels/{name}', exist_ok=True)
 
 
 def gwhd_coords_to_yolo_coords(
@@ -75,14 +80,24 @@ def plot_bboxes(image_name: str, bboxes_yolo: list[list[float]]):
 
 
 if __name__ == '__main__':
-    create_yolo_dir_tree()
+    #create_gwhd_yolo_dir_tree()
 
-    train_df = pd.read_csv(f'{DATASET_ROOT_DIR}/competition_train.csv').drop(columns=['domain'])
-    test_df = pd.read_csv(f'{DATASET_ROOT_DIR}/competition_test.csv').drop(columns=['domain'])
-    val_df = pd.read_csv(f'{DATASET_ROOT_DIR}/competition_val.csv').drop(columns=['domain'])
+    #train_df = pd.read_csv(f'{DATASET_ROOT_DIR}/competition_train.csv').drop(columns=['domain'])
+    #test_df = pd.read_csv(f'{DATASET_ROOT_DIR}/competition_test.csv').drop(columns=['domain'])
+    #val_df = pd.read_csv(f'{DATASET_ROOT_DIR}/competition_val.csv').drop(columns=['domain'])
 
-    train_df.head()
+    #train_df.head()
 
-    create_yolo_format_subset(train_df, 'train')
-    create_yolo_format_subset(test_df, 'test')
-    create_yolo_format_subset(val_df, 'val')
+    #create_yolo_format_subset(train_df, 'train')
+    #create_yolo_format_subset(test_df, 'test')
+    #create_yolo_format_subset(val_df, 'val')
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--subset_name', type=str, required=True, help='Name of subset')
+    parser.add_argument('--subset_descriptor_path', type=str, required=True, help='Path to descriptor file')
+
+    cli_args = parser.parse_args()
+
+    subset_df = pd.read_csv(cli_args.subset_descriptor_path)
+    create_yolo_dir_tree(cli_args.subset_name)
+    create_yolo_format_subset(subset_df, cli_args.subset_name)
