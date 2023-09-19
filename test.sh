@@ -39,15 +39,15 @@ else
 fi
 
 # Generate yaml configuration file from env variables
-echo "train: $DATASET_ROOT_DIR/yolo-format-dataset/train.txt
-val: $DATASET_ROOT_DIR/yolo-format-dataset/val.txt
-test: $DATASET_ROOT_DIR/yolo-format-dataset/test.txt
+#echo "train: $DATASET_ROOT_DIR/yolo-format-dataset/train.txt
+#val: $DATASET_ROOT_DIR/yolo-format-dataset/val.txt
+#test: $DATASET_ROOT_DIR/yolo-format-dataset/test.txt
 
 # number of classes
-nc: 1
+#nc: 1
 
 # class names
-names: [ 'wheat-head' ]" > $PROJ_PATH/data/auto_gwhd_2021.yaml
+#names: [ 'wheat-head' ]" > $PROJ_PATH/data/auto_gwhd_2021.yaml
 
 cd $YOLOV7_ROOT_DIR
 
