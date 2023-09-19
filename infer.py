@@ -52,6 +52,35 @@ def infer(**kwargs):
     return image_tensor, boxes, scores
 
 
+class WheatHeadDetector:
+    def __init__(
+        self,
+        model_name,
+        state_dict,
+        img_size,
+        device
+    ):
+        self.device = device
+        self.model = create_yolov7_model(model_name, num_channels=1, pretrained=False)
+        self.model.load_state_dict(state_dict=state_dict['model_state_dict'])
+        self.model.to(self.device).eval()
+        self.transform = get_gwhd_test_augmentations(img_size, img_size)
+
+    def detect(self, image, conf_th, nms_th):
+        image = self.transform(image=image, bboxes=np.array([]), labels=np.array([]))['image']
+        image_tensor = ToTensor()(image).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(image_tensor[None])
+            preds = self.model.postprocess(outputs, conf_thres=conf_th, multiple_labels_per_box=False)
+            nms_preds = filter_eval_predictions(preds, confidence_threshold=conf_th, nms_threshold=nms_th)
+
+        boxes = nms_preds[0][:, :4]
+        scores = nms_preds[0][:, 4]
+
+        return boxes, scores
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, required=True, help='Yolov7 model name')
